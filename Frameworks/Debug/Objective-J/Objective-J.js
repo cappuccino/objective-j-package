@@ -560,16 +560,16 @@ function class_copyIvarList( aClass)
 {
     return aClass.ivars.slice(0);
 }
-function class_addMethod( aClass, aName, anImplementation, aType)
+function class_addMethod( aClass, aName, anImplementation, types)
 {
     if (aClass.method_hash[aName])
         return NO;
-    var method = new objj_method(aName, anImplementation, aType);
+    var method = new objj_method(aName, anImplementation, types);
     aClass.method_list.push(method);
     aClass.method_dtable[aName] = method;
     method.method_imp.displayName = (((aClass.info & (CLS_META))) ? '+' : '-') + " [" + class_getName(aClass) + ' ' + method_getName(method) + ']';
     if (!((aClass.info & (CLS_META))) && (((aClass.info & (CLS_META))) ? aClass : aClass.isa).isa === (((aClass.info & (CLS_META))) ? aClass : aClass.isa))
-        class_addMethod((((aClass.info & (CLS_META))) ? aClass : aClass.isa), method);
+        class_addMethod((((aClass.info & (CLS_META))) ? aClass : aClass.isa), aName, anImplementation, types);
     return YES;
 }
 function class_addMethods( aClass, methods)
@@ -1134,11 +1134,11 @@ var _CPDictionaryAppendXMLData = function(XMLData, aDictionary)
 }
 var _encodeHTMLComponent = function(aString)
 {
-    return aString.replace('<', "&lt;").replace('>', "&gt;").replace('\"', "&quot;").replace('\'', "&apos;").replace('&', "&amp;");
+    return aString.replace(/&/g,'&amp;').replace(/"/g, '&quot;').replace(/'/g, '&apos;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 var _decodeHTMLComponent = function(aString)
 {
-    return aString.replace("&lt;", '<').replace("&gt;", '>').replace("&quot;", '\"').replace("&apos;", '\'').replace("&amp;", '&');
+    return aString.replace(/&quot;/g, '"').replace(/&apos;/g, '\'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
 }
 var _CPPropertyListAppendXMLData = function(XMLData, aPlist)
 {
@@ -1284,10 +1284,13 @@ _CPPropertyList280NorthSerializers["dictionary"] = function(aDictionary, seriali
 }
 var OBJJ_ENVIRONMENTS = ["ObjJ"];
 var userAgent = window.navigator.userAgent;
-if (userAgent.indexOf("MSIE 7") !== -1)
-    OBJJ_ENVIRONMENTS.unshift("IE7");
-if (userAgent.indexOf("MSIE 8") !== -1)
-    OBJJ_ENVIRONMENTS.unshift("IE8");
+if (userAgent.indexOf("MSIE") !== -1)
+{
+    if (userAgent.indexOf("MSIE 8") !== -1)
+        OBJJ_ENVIRONMENTS.unshift("IE8");
+    else
+        OBJJ_ENVIRONMENTS.unshift("IE7");
+}
 else
     OBJJ_ENVIRONMENTS.unshift("W3C");
 function objj_mostEligibleEnvironmentFromArray(environments)
@@ -1676,9 +1679,9 @@ function objj_decompile(aString, bundle)
 {
     var stream = new objj_markedStream(aString);
     if (stream.magicNumber() != STATIC_MAGIC_NUMBER)
-        objj_exception_throw(new objj_exception(OBJJUnrecognizedFormatException, "*** Could not recognize executable code format."));
+        objj_exception_throw(new objj_exception(OBJJUnrecognizedFormatException, "*** Could not recognize executable code format in bundle: "+bundle));
     if (stream.version() != 1.0)
-        objj_exception_throw(new objj_exception(OBJJUnrecognizedFormatException, "*** Could not recognize executable code format."));
+        objj_exception_throw(new objj_exception(OBJJUnrecognizedFormatException, "*** Could not recognize executable code format in bundle: "+bundle));
     var file = NULL,
         files = [],
         marker;
@@ -1728,14 +1731,13 @@ var OBJJ_EXCEPTION_OUTPUT_STREAM = NULL;
 function objj_exception(aName, aReason, aUserInfo)
 {
     this.name = aName;
-    this.reason = aReason;
+    this.message = aReason;
     this.userInfo = aUserInfo;
     this.__address = (OBJECT_COUNT++);
+    if (typeof Packages !== "undefined" && Packages && Packages.org)
+        this.rhinoException = Packages.org.mozilla.javascript.JavaScriptException(this, null, 0);
 }
-objj_exception.prototype.toString = function()
-{
-    return this.reason;
-}
+objj_exception.prototype = new Error();
 function objj_exception_throw(anException)
 {
     throw anException;
@@ -2526,7 +2528,28 @@ function objj_import( pathOrPaths, isLocal, didCompleteCallback)
     context.evaluate();
 }
 if (window.OBJJ_MAIN_FILE)
-    objj_import(OBJJ_MAIN_FILE, YES, function() { main(); });
+{
+    var addOnload = function(handler)
+    {
+        if (window.addEventListener)
+            window.addEventListener("load", handler, false);
+        else if (window.attachEvent)
+            window.attachEvent("onload", handler);
+    }
+    var documentLoaded = NO;
+    var defaultHandler = function()
+    {
+        documentLoaded = YES;
+    }
+    addOnload(defaultHandler);
+    objj_import(OBJJ_MAIN_FILE, YES, function()
+    {
+        if (documentLoaded)
+            main();
+        else
+            addOnload(main);
+    });
+}
 function objj_debug_object_format(aReceiver)
 {
     return (aReceiver && aReceiver.isa) ? sprintf("<%s %#08x>", (((aReceiver.info & (CLS_META))) ? aReceiver : aReceiver.isa).name, aReceiver.__address) : String(aReceiver);
