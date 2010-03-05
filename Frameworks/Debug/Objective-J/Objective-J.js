@@ -2971,7 +2971,7 @@ Preprocessor.prototype.preprocess = function(tokens, aStringBuffer, terminator, 
             buffer.atoms[buffer.atoms.length] = token;
     }
     if (tuple)
-        new SyntaxError(this.error_message("*** Expected ']' - Unterminated message send or array."));
+        throw new SyntaxError(this.error_message("*** Expected ']' - Unterminated message send or array."));
     if (!aStringBuffer)
         return buffer;
 }

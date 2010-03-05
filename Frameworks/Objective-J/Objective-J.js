@@ -2525,7 +2525,7 @@ _283.atoms[_283.atoms.length]=_285;
 }
 }
 if(_282){
-new SyntaxError(this.error_message("*** Expected ']' - Unterminated message send or array."));
+throw new SyntaxError(this.error_message("*** Expected ']' - Unterminated message send or array."));
 }
 if(!_27f){
 return _283;
