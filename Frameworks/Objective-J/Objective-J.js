@@ -2153,8 +2153,12 @@ this._eventDispatcher.removeEventListener(_22a,_22b);
 CFBundle.prototype.onerror=function(_22c){
 throw _22c.error;
 };
+CFBundle.prototype.bundlePath=function(){
+return this._bundleURL.absoluteURL().path();
+};
 CFBundle.prototype.path=function(){
-return this._bundleURL.absoluteString();
+CPLog.warn("CFBundle.prototype.path is deprecated, use CFBundle.prototype.bundlePath instead.");
+return this.bundlePath.apply(this,arguments);
 };
 CFBundle.prototype.pathForResource=function(_22d){
 return this.resourceURL(_22d).absoluteString();
