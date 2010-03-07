@@ -1733,7 +1733,7 @@ CFURL = function( aURL, aBaseURL)
         var existingBaseURL = aURL.baseURL();
         if (existingBaseURL)
             aBaseURL = new CFURL(existingBaseURL.absoluteURL(), aBaseURL);
-        return new CFURL(aURL.string(), aBaseURL);
+        aURL = aURL.string();
     }
     if (CFURLCachingEnableCount > 0)
     {
@@ -1798,9 +1798,10 @@ function resolveURL(aURL)
     var baseURL = aURL.baseURL();
     if (!baseURL)
         return aURL;
-    var parts = CFURLGetParts(aURL),
+    var parts = ((aURL)._parts || CFURLGetParts(aURL)),
         resolvedParts,
-        baseParts = CFURLGetParts(baseURL.absoluteURL());
+        absoluteBaseURL = baseURL.absoluteURL(),
+        baseParts = ((absoluteBaseURL)._parts || CFURLGetParts(absoluteBaseURL));
     if (parts.scheme || parts.authority)
         resolvedParts = parts;
     else
@@ -1898,7 +1899,7 @@ CFURL.prototype.standardizedURL = function()
 {
     if (this._standardizedURL === undefined)
     {
-        var parts = CFURLGetParts(this),
+        var parts = ((this)._parts || CFURLGetParts(this)),
             pathComponents = parts.pathComponents,
             standardizedPathComponents = pathComponents.slice();
         standardizePathComponents(standardizedPathComponents);
@@ -1935,7 +1936,7 @@ CFURL.prototype.string = function()
 }
 CFURL.prototype.authority = function()
 {
-    var authority = CFURLGetParts(this).authority;
+    var authority = ((this)._parts || CFURLGetParts(this)).authority;
     if (authority)
         return authority;
     var baseURL = this.baseURL();
@@ -1943,13 +1944,19 @@ CFURL.prototype.authority = function()
 }
 CFURL.prototype.hasDirectoryPath = function()
 {
-    var path = this.path();
-    if (!path)
-        return NO;
-    if (path.charAt(path.length - 1) === "/")
-        return YES;
-    var lastPathComponent = this.lastPathComponent();
-    return lastPathComponent === "." || lastPathComponent === "..";
+    var hasDirectoryPath = this._hasDirectoryPath;
+    if (hasDirectoryPath === undefined)
+    {
+        var path = this.path();
+        if (!path)
+            return NO;
+        if (path.charAt(path.length - 1) === "/")
+            return YES;
+        var lastPathComponent = this.lastPathComponent();
+        hasDirectoryPath = lastPathComponent === "." || lastPathComponent === "..";
+        this._hasDirectoryPath = hasDirectoryPath;
+    }
+    return this._hasDirectoryPath;
 }
 CFURL.prototype.hostName = function()
 {
@@ -1957,7 +1964,7 @@ CFURL.prototype.hostName = function()
 }
 CFURL.prototype.fragment = function()
 {
-    return CFURLGetParts(this).fragment;
+    return ((this)._parts || CFURLGetParts(this)).fragment;
 }
 CFURL.prototype.lastPathComponent = function()
 {
@@ -1969,11 +1976,11 @@ CFURL.prototype.lastPathComponent = function()
 }
 CFURL.prototype.path = function()
 {
-    return CFURLGetParts(this).path;
+    return ((this)._parts || CFURLGetParts(this)).path;
 }
 CFURL.prototype.pathComponents = function()
 {
-    return CFURLGetParts(this).pathComponents;
+    return ((this)._parts || CFURLGetParts(this)).pathComponents;
 }
 CFURL.prototype.pathExtension = function()
 {
@@ -1986,31 +1993,38 @@ CFURL.prototype.pathExtension = function()
 }
 CFURL.prototype.queryString = function()
 {
-    return CFURLGetParts(this).queryString;
+    return ((this)._parts || CFURLGetParts(this)).queryString;
 }
 CFURL.prototype.scheme = function()
 {
-    var scheme = CFURLGetParts(this).scheme;
-    if (scheme)
-        return scheme;
-    var baseURL = this.baseURL();
-    return baseURL && baseURL.scheme();
+    var scheme = this._scheme;
+    if (scheme === undefined)
+    {
+        scheme = ((this)._parts || CFURLGetParts(this)).scheme;
+        if (!scheme)
+        {
+            var baseURL = this.baseURL();
+            scheme = baseURL && baseURL.scheme();
+        }
+        this._scheme = scheme;
+    }
+    return scheme;
 }
 CFURL.prototype.user = function()
 {
-    return CFURLGetParts(this).user;
+    return ((this)._parts || CFURLGetParts(this)).user;
 }
 CFURL.prototype.password = function()
 {
-    return CFURLGetParts(this).password;
+    return ((this)._parts || CFURLGetParts(this)).password;
 }
 CFURL.prototype.portNumber = function()
 {
-    return CFURLGetParts(this).portNumber;
+    return ((this)._parts || CFURLGetParts(this)).portNumber;
 }
 CFURL.prototype.domain = function()
 {
-    return CFURLGetParts(this).domain;
+    return ((this)._parts || CFURLGetParts(this)).domain;
 }
 CFURL.prototype.baseURL = function()
 {
@@ -3467,9 +3481,9 @@ Executable.prototype.code = function()
 Executable.prototype.setCode = function(code)
 {
     this._code = code;
-    var parameters = this.functionParameters().join(","),
-        absoluteString = this.URL().absoluteString();
-        code += "/**/\n//@ sourceURL=" + "hello" + absoluteString;
+    var parameters = this.functionParameters().join(",");
+        var absoluteString = this.URL().absoluteString();
+        code += "/**/\n//@ sourceURL=" + absoluteString;
         this._function = new Function(parameters, code);
     this._function.displayName = absoluteString;
 }
@@ -4301,6 +4315,8 @@ if (typeof OBJJ_AUTO_BOOTSTRAP === "undefined" || OBJJ_AUTO_BOOTSTRAP)
     exports.bootstrap();
 function makeAbsoluteURL( aURL)
 {
+    if (aURL instanceof CFURL && aURL.scheme())
+        return aURL;
     return new CFURL(aURL, mainBundleURL);
 }
 objj_importFile = Executable.fileImporterForURL(mainBundleURL);
