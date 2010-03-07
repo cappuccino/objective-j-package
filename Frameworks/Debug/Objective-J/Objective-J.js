@@ -4282,6 +4282,7 @@ var mainFileURL = new CFURL(window.OBJJ_MAIN_FILE || "main.j"),
 if (mainBundleURL === assumedResolvedURL)
     assumedResolvedURL = new CFURL(assumedResolvedURL.schemeAndAuthority());
 StaticResource.resourceAtURL(assumedResolvedURL, YES);
+exports.pageURL = pageURL;
 exports.bootstrap = function()
 {
     resolveMainBundleURL();

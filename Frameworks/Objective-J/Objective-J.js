@@ -3534,6 +3534,7 @@ if(_1c4===_39b){
 _39b=new CFURL(_39b.schemeAndAuthority());
 }
 _1ad.resourceAtURL(_39b,YES);
+_2.pageURL=_395;
 _2.bootstrap=function(){
 _39c();
 };
