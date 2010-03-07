@@ -1338,6 +1338,7 @@ CFDictionary.prototype.containsKey = function( aKey)
 {
     return hasOwnProperty.apply(this._buckets, [aKey]);
 }
+CFDictionary.prototype.containsKey.displayName = "CFDictionary.containsKey";
 CFDictionary.prototype.containsValue = function( anObject)
 {
     var keys = this._keys,
@@ -1349,14 +1350,17 @@ CFDictionary.prototype.containsValue = function( anObject)
             return YES;
     return NO;
 }
+CFDictionary.prototype.containsValue.displayName = "CFDictionary.containsValue";
 CFDictionary.prototype.count = function()
 {
     return this._count;
 }
+CFDictionary.prototype.count.displayName = "CFDictionary.count";
 CFDictionary.prototype.countOfKey = function( aKey)
 {
     return this.containsKey(aKey) ? 1 : 0;
 }
+CFDictionary.prototype.countOfKey.displayName = "CFDictionary.countOfKey";
 CFDictionary.prototype.countOfValue = function( anObject)
 {
     var keys = this._keys,
@@ -1369,10 +1373,12 @@ CFDictionary.prototype.countOfValue = function( anObject)
             return ++countOfValue;
     return countOfValue;
 }
+CFDictionary.prototype.countOfValue.displayName = "CFDictionary.countOfValue";
 CFDictionary.prototype.keys = function()
 {
     return this._keys.slice();
 }
+CFDictionary.prototype.keys.displayName = "CFDictionary.keys";
 CFDictionary.prototype.valueForKey = function( aKey)
 {
     var buckets = this._buckets;
@@ -1380,6 +1386,7 @@ CFDictionary.prototype.valueForKey = function( aKey)
         return nil;
     return buckets[aKey];
 }
+CFDictionary.prototype.valueForKey.displayName = "CFDictionary.valueForKey";
 CFDictionary.prototype.toString = function()
 {
     var string = "{\n",
@@ -1393,6 +1400,7 @@ CFDictionary.prototype.toString = function()
     }
     return string + "}";
 }
+CFDictionary.prototype.toString.displayName = "CFDictionary.toString";
 CFMutableDictionary = function( aDictionary)
 {
     CFDictionary.apply(this, []);
@@ -1410,6 +1418,7 @@ CFMutableDictionary.prototype.addValueForKey = function( aKey, aValue)
     this._keys.push(aKey);
     this._buckets[aKey] = aValue;
 }
+CFMutableDictionary.prototype.addValueForKey.displayName = "CFMutableDictionary.addValueForKey";
 CFMutableDictionary.prototype.removeValueForKey = function( aKey)
 {
     var indexOfKey = -1;
@@ -1433,18 +1442,21 @@ CFMutableDictionary.prototype.removeValueForKey = function( aKey)
     this._keys.splice(indexOfKey, 1);
     delete this._buckets[aKey];
 }
+CFMutableDictionary.prototype.removeValueForKey.displayName = "CFMutableDictionary.removeValueForKey";
 CFMutableDictionary.prototype.removeAllValues = function()
 {
     this._count = 0;
     this._keys = [];
     this._buckets = { };
 }
+CFMutableDictionary.prototype.removeAllValues.displayName = "CFMutableDictionary.removeAllValues";
 CFMutableDictionary.prototype.replaceValueForKey = function( aKey, aValue)
 {
     if (!this.containsKey(aKey))
         return;
     this._buckets[aKey] = aValue;
 }
+CFMutableDictionary.prototype.replaceValueForKey.displayName = "CFMutableDictionary.replaceValueForKey";
 CFMutableDictionary.prototype.setValueForKey = function( aKey, aValue)
 {
     if (aValue === nil || aValue === undefined)
@@ -1454,6 +1466,7 @@ CFMutableDictionary.prototype.setValueForKey = function( aKey, aValue)
     else
         this.addValueForKey(aKey, aValue);
 }
+CFMutableDictionary.prototype.setValueForKey.displayName = "CFMutableDictionary.setValueForKey";
 CFData = function()
 {
     this._rawString = NULL;
@@ -1786,7 +1799,9 @@ CFURL.prototype.schemeAndAuthority = function()
 }
 CFURL.prototype.absoluteString = function()
 {
-    return this.absoluteURL().string();
+    if (this._absoluteString === undefined)
+        this._absoluteString = this.absoluteURL().string();
+    return this._absoluteString;
 }
 CFURL.prototype.toString = function()
 {
@@ -1829,7 +1844,7 @@ function resolveURL(aURL)
             if (!baseURL.hasDirectoryPath() && basePathComponents.length)
                 resolvedPathComponents.splice(basePathComponents.length - 1, 1);
             if (pathComponents.length && pathComponents[0] === "..")
-                standardizePathComponents(resolvedPathComponents);
+                standardizePathComponents(resolvedPathComponents, YES);
             resolvedParts.pathComponents = resolvedPathComponents;
             resolvedParts.path = pathFromPathComponents(resolvedPathComponents, pathComponents.length <= 0 || aURL.hasDirectoryPath());
         }
@@ -1838,7 +1853,9 @@ function resolveURL(aURL)
         resolvedURL = new CFURL(resolvedString);
     resolvedURL._parts = resolvedParts;
     resolvedURL._standardizedURL = resolvedURL;
+    resolvedURL._standardizedString = resolvedString;
     resolvedURL._absoluteURL = resolvedURL;
+    resolvedURL._absoluteString = resolvedString;
     return resolvedURL;
 }
 function pathFromPathComponents( pathComponents, isDirectoryPath)
@@ -1850,26 +1867,28 @@ function pathFromPathComponents( pathComponents, isDirectoryPath)
         path += "/";
     return path;
 }
-function standardizePathComponents( pathComponents)
+function standardizePathComponents( pathComponents, inPlace)
 {
     var index = 0,
         resultIndex = 0,
-        count = pathComponents.length;
+        count = pathComponents.length,
+        result = inPlace ? pathComponents : [];
     for (; index < count; ++index)
     {
         var component = pathComponents[index];
         if (component === "" || component === ".")
              continue;
-        if (component !== ".." || resultIndex === 0 || pathComponents[resultIndex - 1] === "..")
+        if (component !== ".." || resultIndex === 0 || result[resultIndex - 1] === "..")
         {
-                pathComponents[resultIndex] = component;
+                result[resultIndex] = component;
             resultIndex++;
             continue;
         }
-        if (resultIndex > 0 && pathComponents[resultIndex - 1] !== "/")
+        if (resultIndex > 0 && result[resultIndex - 1] !== "/")
             --resultIndex;
     }
-    pathComponents.length = resultIndex;
+    result.length = resultIndex;
+    return result;
 }
 function URLStringFromParts( parts)
 {
@@ -1901,8 +1920,7 @@ CFURL.prototype.standardizedURL = function()
     {
         var parts = ((this)._parts || CFURLGetParts(this)),
             pathComponents = parts.pathComponents,
-            standardizedPathComponents = pathComponents.slice();
-        standardizePathComponents(standardizedPathComponents);
+            standardizedPathComponents = standardizePathComponents(pathComponents, NO);
         var standardizedPath = pathFromPathComponents(standardizedPathComponents, this.hasDirectoryPath());
         if (parts.path === standardizedPath)
             this._standardizedURL = this;
@@ -1913,7 +1931,7 @@ CFURL.prototype.standardizedURL = function()
             standardizedParts.path = standardizedPath;
             var standardizedURL = new CFURL(URLStringFromParts(standardizedParts), this.baseURL());
             standardizedURL._parts = standardizedParts;
-            standardizedURL._standardizedParts = standardizedURL;
+            standardizedURL._standardizedURL = standardizedURL;
             this._standardizedURL = standardizedURL;
         }
     }
@@ -1968,11 +1986,16 @@ CFURL.prototype.fragment = function()
 }
 CFURL.prototype.lastPathComponent = function()
 {
-    var pathComponents = this.pathComponents(),
-        pathComponentCount = pathComponents.length;
-    if (!pathComponentCount)
-        return "";
-    return pathComponents[pathComponentCount - 1];
+    if (this._lastPathComponent === undefined)
+    {
+        var pathComponents = this.pathComponents(),
+            pathComponentCount = pathComponents.length;
+        if (!pathComponentCount)
+            this._lastPathComponent = "";
+        else
+            this._lastPathComponent = pathComponents[pathComponentCount - 1];
+    }
+    return this._lastPathComponent;
 }
 CFURL.prototype.path = function()
 {
@@ -2240,15 +2263,16 @@ CFBundle.prototype.load = function( shouldExecute)
     if (this._loadStatus !== CFBundleUnloaded)
         return;
     this._loadStatus = CFBundleLoading | CFBundleLoadingInfoPlist;
-    var self = this;
-    var parentURL = new CFURL("..", this.bundleURL());
-    if (parentURL.absoluteString() === this.bundleURL().absoluteString())
+    var self = this,
+        bundleURL = this.bundleURL(),
+        parentURL = new CFURL("..", bundleURL);
+    if (parentURL.absoluteString() === bundleURL.absoluteString())
         parentURL = parentURL.schemeAndAuthority();
     StaticResource.resolveResourceAtURL(parentURL, YES, function(aStaticResource)
     {
-        var resourceName = self.bundleURL().absoluteURL().lastPathComponent();
+        var resourceName = bundleURL.absoluteURL().lastPathComponent();
         self._staticResource = aStaticResource._children[resourceName] ||
-                                new StaticResource(resourceName, aStaticResource, YES, NO);
+                                new StaticResource(bundleURL, aStaticResource, YES, NO);
         function onsuccess( anEvent)
         {
             self._loadStatus &= ~CFBundleLoadingInfoPlist;
@@ -2527,12 +2551,11 @@ function decompileStaticFile( aBundle, aString, aPath)
         {
             var fileURL = new CFURL(text, bundleURL),
                 parent = StaticResource.resourceAtURL(new CFURL(".", fileURL), YES);
-            file = new StaticResource(fileURL.lastPathComponent(), parent, NO, YES);
+            file = new StaticResource(fileURL, parent, NO, YES);
         }
         else if (marker === MARKER_URI)
         {
             var URL = new CFURL(text, bundleURL),
-                mappedURL,
                 mappedURLString = stream.getString();
             if (mappedURLString.indexOf("mhtml:") === 0)
             {
@@ -2544,11 +2567,10 @@ function decompileStaticFile( aBundle, aString, aPath)
                         lastPart = URLString.substring(exclamationIndex);
                     mappedURLString = firstPart + "?" + CFCacheBuster + lastPart;
                 }
-                mappedURL = new CFURL(mappedURLString);
             }
             CFURL.setMappedURLForURL(URL, new CFURL(mappedURLString));
             var parent = StaticResource.resourceAtURL(new CFURL(".", URL), YES);
-            new StaticResource(URL.lastPathComponent(), parent, NO, YES);
+            new StaticResource(URL, parent, NO, YES);
         }
         else if (marker === MARKER_TEXT)
             file.write(text);
@@ -2580,21 +2602,22 @@ CFBundle.prototype.pathForResource = function(aResource)
     return this.resourceURL(aResource).absoluteString();
 }
 var rootResources = { };
-function StaticResource( aName, aParent, isDirectory, isResolved)
+function StaticResource( aURL, aParent, isDirectory, isResolved)
 {
     this._parent = aParent;
     this._eventDispatcher = new EventDispatcher(this);
-    this._name = aName;
+    var name = aURL.absoluteURL().lastPathComponent() || aURL.schemeAndAuthority();
+    this._name = name;
+    this._URL = aURL;
     this._isResolved = !!isResolved;
-    this._URL = new CFURL(aName, aParent && aParent.URL().asDirectoryPathURL());
     if (isDirectory)
         this._URL = this._URL.asDirectoryPathURL();
     if (!aParent)
-        rootResources[aName] = this;
+        rootResources[name] = this;
     this._isDirectory = !!isDirectory;
     this._isNotFound = NO;
     if (aParent)
-        aParent._children[aName] = this;
+        aParent._children[name] = this;
     if (isDirectory)
         this._children = { };
     else
@@ -2671,7 +2694,7 @@ function rootResourceForAbsoluteURL( anAbsoluteURL)
     var schemeAndAuthority = anAbsoluteURL.schemeAndAuthority(),
         resource = rootResources[schemeAndAuthority];
     if (!resource)
-        resource = new StaticResource(schemeAndAuthority, NULL, YES, YES);
+        resource = new StaticResource(new CFURL(schemeAndAuthority), NULL, YES, YES);
     return resource;
 }
 StaticResource.resourceAtURL = function( aURL, resolveAsDirectoriesIfNecessary)
@@ -2687,7 +2710,7 @@ StaticResource.resourceAtURL = function( aURL, resolveAsDirectoriesIfNecessary)
         if (hasOwnProperty.call(resource._children, name))
             resource = resource._children[name];
         else if (resolveAsDirectoriesIfNecessary)
-            resource = new StaticResource(name, resource, YES, YES);
+            resource = new StaticResource(new CFURL(name, resource.URL()), resource, YES, YES);
         else
             throw new Error("Static Resource at " + aURL + " is not resolved (\"" + name + "\")");
     }
@@ -2715,7 +2738,7 @@ function resolveResourceComponents( aResource, isDirectory, components, index, a
             child = hasOwnProperty.call(aResource._children, name) && aResource._children[name];
         if (!child)
         {
-            child = new StaticResource(name, aResource, index + 1 < count || isDirectory , NO);
+            child = new StaticResource(new CFURL(name, aResource.URL()), aResource, index + 1 < count || isDirectory , NO);
             child.resolve();
         }
         if (!child.isResolved())
@@ -3446,8 +3469,13 @@ function Executable( aCode, fileDependencies, aURL, aFunction)
     this._function = aFunction || NULL;
     this._URL = makeAbsoluteURL(aURL || new CFURL("(Anonymous" + (AnonymousExecutableCount++) + ")"));
     this._fileDependencies = fileDependencies;
-    this._fileDependencyLoadStatus = ExecutableUnloadedFileDependencies;
-    this._eventDispatcher = new EventDispatcher(this);
+    if (fileDependencies.length)
+    {
+        this._fileDependencyStatus = ExecutableUnloadedFileDependencies;
+        this._fileDependencyCallbacks = [];
+    }
+    else
+        this._fileDependencyStatus = ExecutableLoadedFileDependencies;
     if (this._function)
         return;
     this.setCode(aCode);
@@ -3502,164 +3530,178 @@ Executable.prototype.scope = function()
 }
 Executable.prototype.hasLoadedFileDependencies = function()
 {
-    return this._fileDependencyLoadStatus === ExecutableLoadedFileDependencies;
+    return this._fileDependencyStatus === ExecutableLoadedFileDependencies;
 }
-var globalIteration = 0;
-Executable.prototype.loadFileDependencies = function()
+var fileDependencyLoadCount = 0,
+    fileDependencyExecutables = [],
+    fileDependencyMarkers = { };
+Executable.prototype.loadFileDependencies = function(aCallback)
 {
-    if (this._fileDependencyLoadStatus !== ExecutableUnloadedFileDependencies)
-        return;
-    this._fileDependencyLoadStatus = ExecutableLoadingFileDependencies;
-    var searchedURLStrings = [{ }, { }],
-        fileExecutableSearches = new CFMutableDictionary(),
-        incompleteFileExecutableSearches = new CFMutableDictionary(),
-        loadingExecutables = { };
-    function searchForFileDependencies( anExecutable)
+    var status = this._fileDependencyStatus;
+    if (status === ExecutableLoadedFileDependencies)
+        return aCallback();
+    this._fileDependencyCallbacks.push(aCallback)
+    if (status === ExecutableUnloadedFileDependencies)
     {
-        var executables = [anExecutable],
-            executableIndex = 0,
-            executableCount = executables.length;
-        for (; executableIndex < executableCount; ++executableIndex)
-        {
-            var executable = executables[executableIndex];
-            if (executable.hasLoadedFileDependencies())
-                continue;
-            var executableURLString = executable.URL().absoluteString();
-            loadingExecutables[executableURLString] = executable;
-            var referenceURL = new CFURL(".", executable.URL()),
-                fileDependencies = executable.fileDependencies(),
-                fileDependencyIndex = 0,
-                fileDependencyCount = fileDependencies.length;
-            for (; fileDependencyIndex < fileDependencyCount; ++fileDependencyIndex)
-            {
-                var fileDependency = fileDependencies[fileDependencyIndex],
-                    isLocal = fileDependency.isLocal(),
-                    URL = fileDependency.URL();
-                if (isLocal)
-                    URL = new CFURL(URL, referenceURL);
-                var URLString = URL.absoluteString();
-                if (searchedURLStrings[isLocal ? 1 : 0][URLString])
-                    continue;
-                searchedURLStrings[isLocal ? 1 : 0][URLString] = YES;
-                var fileExecutableSearch = new FileExecutableSearch(URL, isLocal),
-                    fileExecutableSearchUID = fileExecutableSearch.UID();
-                if (fileExecutableSearches.containsKey(fileExecutableSearchUID))
-                    continue;
-                fileExecutableSearches.setValueForKey(fileExecutableSearchUID, fileExecutableSearch);
-                if (fileExecutableSearch.isComplete())
-                {
-                    executables.push(fileExecutableSearch.result());
-                    ++executableCount;
-                }
-                else
-                {
-                    incompleteFileExecutableSearches.setValueForKey(fileExecutableSearchUID, fileExecutableSearch);
-                    fileExecutableSearch.addEventListener("complete", function( anEvent)
-                    {
-                        var fileExecutableSearch = anEvent.fileExecutableSearch;
-                        incompleteFileExecutableSearches.removeValueForKey(fileExecutableSearch.UID());
-                        searchForFileDependencies(fileExecutableSearch.result());
-                    });
-                }
-            }
-        }
-        if (incompleteFileExecutableSearches.count() > 0)
-            return;
-        for (var URLString in loadingExecutables)
-            if (hasOwnProperty.call(loadingExecutables, URLString))
-                loadingExecutables[URLString]._fileDependencyLoadStatus = ExecutableLoadedFileDependencies;
-        for (var URLString in loadingExecutables)
-            if (hasOwnProperty.call(loadingExecutables, URLString))
-            {
-                var executable = loadingExecutables[URLString];
-                executable._eventDispatcher.dispatchEvent(
-                {
-                    type:"dependenciesload",
-                    executable:executable
-                });
-            }
+        if (fileDependencyLoadCount)
+            throw "Can't load";
+        loadFileDependenciesForExecutable(this);
     }
-    searchForFileDependencies(this);
 }
-Executable.prototype.addEventListener = function( anEventName, aListener)
+function loadFileDependenciesForExecutable( anExecutable)
 {
-    this._eventDispatcher.addEventListener(anEventName, aListener);
+    fileDependencyExecutables.push(anExecutable);
+    anExecutable._fileDependencyStatus = ExecutableLoadingFileDependencies;
+    var fileDependencies = anExecutable.fileDependencies(),
+        index = 0,
+        count = fileDependencies.length,
+        referenceURL = anExecutable.referenceURL(),
+        referenceURLString = referenceURL.absoluteString(),
+        fileExecutableSearcher = anExecutable.fileExecutableSearcher();
+    fileDependencyLoadCount += count;
+    for (; index < count; ++index)
+    {
+        var fileDependency = fileDependencies[index],
+            isQuoted = fileDependency.isLocal(),
+            URL = fileDependency.URL(),
+            marker = (isQuoted && (referenceURLString + " ") || "") + URL;
+        if (fileDependencyMarkers[marker])
+        {
+            if (--fileDependencyLoadCount === 0)
+                fileExecutableDependencyLoadFinished();
+            continue;
+        }
+        fileDependencyMarkers[marker] = YES;
+        fileExecutableSearcher(URL, isQuoted, fileExecutableSearchFinished);
+    }
 }
-Executable.prototype.removeEventListener = function( anEventName, aListener)
+function fileExecutableSearchFinished( aFileExecutable)
 {
-    this._eventDispatcher.removeEventListener(anEventName, aListener);
+    --fileDependencyLoadCount;
+    if (aFileExecutable._fileDependencyStatus === ExecutableUnloadedFileDependencies)
+        loadFileDependenciesForExecutable(aFileExecutable);
+    else if (fileDependencyLoadCount === 0)
+        fileExecutableDependencyLoadFinished();
+}
+function fileExecutableDependencyLoadFinished()
+{
+    var index = 0,
+        count = fileDependencyExecutables.length;
+    for (; index < count; ++index)
+        fileDependencyExecutables[index]._fileDependencyStatus = ExecutableLoadedFileDependencies;
+    for (index = 0; index < count; ++index)
+    {
+        var executable = fileDependencyExecutables[index],
+            callbacks = executable._fileDependencyCallbacks,
+            callbackIndex = 0,
+            callbackCount = callbacks.length;
+        for (; callbackIndex < callbackCount; ++callbackIndex)
+            callbacks[callbackIndex]();
+        executable._fileDependencyCallbacks = [];
+    }
+}
+Executable.prototype.referenceURL = function()
+{
+    if (this._referenceURL === undefined)
+        this._referenceURL = new CFURL(".", this.URL());
+    return this._referenceURL;
 }
 Executable.prototype.fileImporter = function()
 {
-    return Executable.fileImporterForURL(new CFURL(".", this.URL()));
+    return Executable.fileImporterForURL(this.referenceURL());
 }
 Executable.prototype.fileExecuter = function()
 {
-    return Executable.fileExecuterForURL(new CFURL(".", this.URL()));
+    return Executable.fileExecuterForURL(this.referenceURL());
 }
-var cachedFileExecutersForURLStrings = { };
+Executable.prototype.fileExecutableSearcher = function()
+{
+    return Executable.fileExecutableSearcherForURL(this.referenceURL());
+}
+var cachedFileExecuters = { };
 Executable.fileExecuterForURL = function( aURL)
 {
     var referenceURL = makeAbsoluteURL(aURL),
         referenceURLString = referenceURL.absoluteString(),
-        cachedFileExecuter = cachedFileExecutersForURLStrings[referenceURLString];
+        cachedFileExecuter = cachedFileExecuters[referenceURLString];
     if (!cachedFileExecuter)
     {
         cachedFileExecuter = function( aURL, isQuoted, shouldForce)
         {
-            aURL = new CFURL(aURL, isQuoted ? referenceURL : NULL);
-            var fileExecutableSearch = new FileExecutableSearch(aURL, isQuoted),
-                fileExecutable = fileExecutableSearch.result();
-            if (!fileExecutable.hasLoadedFileDependencies())
-                throw "No executable loaded for file at URL " + aURL;
-            fileExecutable.execute(shouldForce);
+            Executable.fileExecutableSearcherForURL(referenceURL)(aURL, isQuoted,
+            function( aFileExecutable)
+            {
+                if (!aFileExecutable.hasLoadedFileDependencies())
+                    throw "No executable loaded for file at URL " + aURL;
+                aFileExecutable.execute(shouldForce);
+            });
         }
-        cachedFileExecutersForURLStrings[referenceURLString] = cachedFileExecuter;
+        cachedFileExecuters[referenceURLString] = cachedFileExecuter;
     }
     return cachedFileExecuter;
 }
-var cachedImportersForURLStrings = { };
+var cachedFileImporters = { };
 Executable.fileImporterForURL = function( aURL)
 {
     var referenceURL = makeAbsoluteURL(aURL),
         referenceURLString = referenceURL.absoluteString(),
-        cachedImporter = cachedImportersForURLStrings[referenceURLString];
-    if (!cachedImporter)
+        cachedFileImporter = cachedFileImporters[referenceURLString];
+    if (!cachedFileImporter)
     {
-        cachedImporter = function( aURL, isQuoted, aCallback)
+        cachedFileImporter = function( aURL, isQuoted, aCallback)
         {
             enableCFURLCaching();
-            aURL = new CFURL(aURL, isQuoted ? referenceURL : NULL);
-            var fileExecutableSearch = new FileExecutableSearch(aURL, isQuoted);
-            function searchComplete( aFileExecutableSearch)
+            Executable.fileExecutableSearcherForURL(referenceURL)(aURL, isQuoted,
+            function( aFileExecutable)
             {
-                var fileExecutable = aFileExecutableSearch.result(),
-                    executeAndCallback = function ()
-                    {
-                        fileExecutable.execute();
-                        disableCFURLCaching();
-                        if (aCallback)
-                            aCallback();
-                    }
-                if (!fileExecutable.hasLoadedFileDependencies())
+                aFileExecutable.loadFileDependencies(function()
                 {
-                    fileExecutable.addEventListener("dependenciesload", executeAndCallback);
-                    fileExecutable.loadFileDependencies();
-                }
-                else
-                    executeAndCallback();
-            }
-            if (fileExecutableSearch.isComplete())
-                searchComplete(fileExecutableSearch);
-            else
-                fileExecutableSearch.addEventListener("complete", function( anEvent)
-                {
-                    searchComplete(anEvent.fileExecutableSearch);
+                    aFileExecutable.execute();
+                    disableCFURLCaching();
+                    if (aCallback)
+                        aCallback();
                 });
+            });
         }
-        cachedImportersForURLStrings[referenceURLString] = cachedImporter;
+        cachedFileImporters[referenceURLString] = cachedFileImporter;
     }
-    return cachedImporter;
+    return cachedFileImporter;
+}
+var cachedFileExecutableSearchers = { },
+    cachedFileExecutableSearchResults = { };
+Executable.fileExecutableSearcherForURL = function( referenceURL)
+{
+    var referenceURLString = referenceURL.absoluteString(),
+        cachedFileExecutableSearcher = cachedFileExecutableSearchers[referenceURLString],
+        cachedSearchResults = { };
+    if (!cachedFileExecutableSearcher)
+    {
+        cachedFileExecutableSearcher = function( aURL, isQuoted, success)
+        {
+            var cacheUID = (isQuoted && referenceURL || "") + aURL,
+                cachedResult = cachedFileExecutableSearchResults[cacheUID];
+            if (cachedResult)
+                return completed(cachedResult);
+            var isAbsoluteURL = (aURL instanceof CFURL) && aURL.scheme();
+            if (isQuoted || isAbsoluteURL)
+            {
+                if (!isAbsoluteURL)
+                    aURL = new CFURL(aURL, referenceURL);
+                StaticResource.resolveResourceAtURL(aURL, NO, completed);
+            }
+            else
+                StaticResource.resolveResourceAtURLSearchingIncludeURLs(aURL, completed);
+            function completed( aStaticResource)
+            {
+                if (!aStaticResource)
+                    throw new Error("Could not load file at " + aURL);
+                cachedFileExecutableSearchResults[cacheUID] = aStaticResource;
+                success(new FileExecutable(aStaticResource.URL()));
+            }
+        };
+        cachedFileExecutableSearchers[referenceURLString] = cachedFileExecutableSearcher;
+    }
+    return cachedFileExecutableSearcher;
 }
 var FileExecutablesForURLStrings = { };
 function FileExecutable( aURL, anExecutable)
@@ -3718,66 +3760,6 @@ function decompile( aString, aURL)
             dependencies.push(new FileDependency(new CFURL(text), YES));
     }
     return new Executable(code, dependencies, aURL);
-}
-var FileExecutableSearchesForPaths = [{ }, { }];
-function FileExecutableSearch( aURL, isQuoted)
-{
-    var URLString = aURL.absoluteString(),
-        existingSearch = FileExecutableSearchesForPaths[isQuoted ? 1 : 0][URLString];
-    if (existingSearch)
-        return existingSearch;
-    FileExecutableSearchesForPaths[isQuoted ? 1 : 0][URLString] = this;
-    this._UID = objj_generateObjectUID();
-    this._URL = aURL;
-    this._isComplete = NO;
-    this._eventDispatcher = new EventDispatcher(this);
-    this._result = NULL;
-    var self = this;
-    function completed( aStaticResource)
-    {
-        if (!aStaticResource)
-            throw new Error("Could not load file at " + aURL);
-        self._result = new FileExecutable(aStaticResource.URL());
-        self._isComplete = YES;
-        self._eventDispatcher.dispatchEvent(
-        {
-            type:"complete",
-            fileExecutableSearch:self
-        });
-    }
-    if (isQuoted)
-        StaticResource.resolveResourceAtURL(aURL, NO, completed);
-    else
-        StaticResource.resolveResourceAtURLSearchingIncludeURLs(aURL, completed);
-}
-exports.FileExecutableSearch = FileExecutableSearch;
-FileExecutableSearch.prototype.URL = function()
-{
-    return this._URL;
-}
-FileExecutableSearch.prototype.result = function()
-{
-    return this._result;
-}
-FileExecutableSearch.prototype.UID = function()
-{
-    return this._UID;
-}
-FileExecutableSearch.prototype.isComplete = function()
-{
-    return this._isComplete;
-}
-FileExecutableSearch.prototype.result = function()
-{
-    return this._result;
-}
-FileExecutableSearch.prototype.addEventListener = function( anEventName, aListener)
-{
-    this._eventDispatcher.addEventListener(anEventName, aListener);
-}
-FileExecutableSearch.prototype.removeEventListener = function( anEventName, aListener)
-{
-    this._eventDispatcher.removeEventListener(anEventName, aListener);
 }
 var CLS_CLASS = 0x1,
     CLS_META = 0x2,
@@ -4059,7 +4041,8 @@ objj_msgSend = function( aReceiver, aSelector)
 {
     if (aReceiver == nil)
         return nil;
-    if (!((((aReceiver.isa.info & (CLS_META))) ? aReceiver.isa : aReceiver.isa.isa).info & (CLS_INITIALIZED))) _class_initialize(aReceiver.isa); var method = aReceiver.isa.method_dtable[aSelector]; if (!method) method = _objj_forward; var implementation = method.method_imp;;
+    var isa = aReceiver.isa;
+    if (!((((isa.info & (CLS_META))) ? isa : isa.isa).info & (CLS_INITIALIZED))) _class_initialize(isa); var method = isa.method_dtable[aSelector]; if (!method) method = _objj_forward; var implementation = method.method_imp;;
     switch(arguments.length)
     {
         case 2: return implementation(aReceiver, aSelector);
