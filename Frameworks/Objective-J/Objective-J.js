@@ -1724,7 +1724,7 @@ var next=_190.indexOf(";",_191);
 if(next<0){
 return null;
 }
-var size=parseInt(_190.substring(_191,next)),text=_190.substr(next+1,size);
+var size=parseInt(_190.substring(_191,next),10),text=_190.substr(next+1,size);
 this._location=next+1+size;
 return text;
 };

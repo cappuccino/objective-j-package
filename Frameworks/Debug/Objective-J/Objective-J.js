@@ -2048,10 +2048,12 @@ MarkedStream.prototype.magicNumber = function()
 {
     return this._magicNumber;
 }
+MarkedStream.prototype.magicNumber.displayName = "MarkedStream.prototype.magicNumber";
 MarkedStream.prototype.version = function()
 {
     return this._version;
 }
+MarkedStream.prototype.version.displayName = "MarkedStream.prototype.version";
 MarkedStream.prototype.getMarker = function()
 {
     var string = this._string,
@@ -2067,6 +2069,7 @@ MarkedStream.prototype.getMarker = function()
     this._location = next + 1;
     return marker;
 }
+MarkedStream.prototype.getMarker.displayName = "MarkedStream.prototype.getMarker";
 MarkedStream.prototype.getString = function()
 {
     var string = this._string,
@@ -2076,11 +2079,12 @@ MarkedStream.prototype.getString = function()
     var next = string.indexOf(';', location);
     if (next < 0)
         return null;
-    var size = parseInt(string.substring(location, next)),
+    var size = parseInt(string.substring(location, next), 10),
         text = string.substr(next + 1, size);
     this._location = next + 1 + size;
     return text;
 }
+MarkedStream.prototype.getString.displayName = "MarkedStream.prototype.getString";
 var CFBundleUnloaded = 0,
     CFBundleLoading = 1 << 0,
     CFBundleLoadingInfoPlist = 1 << 1,
