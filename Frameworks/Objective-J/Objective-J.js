@@ -1016,7 +1016,7 @@ _106=NO;
 break;
 case _ea:
 _106=new CFMutableData();
-_106.bytes=(_105.firstChild)?base64_decode_to_array(((String((_105.firstChild).nodeValue))),YES):[];
+_106.bytes=(_105.firstChild)?CFData.decodeBase64ToArray(((String((_105.firstChild).nodeValue))),YES):[];
 break;
 default:
 throw new Error("*** "+(String(_105.nodeName))+" tag not recognized in Plist.");
@@ -1264,7 +1264,7 @@ var _130=["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R
 for(var i=0;i<_130.length;i++){
 _131[_130[i].charCodeAt(0)]=i;
 }
-base64_decode_to_array=function(_132,_133){
+CFData.decodeBase64ToArray=function(_132,_133){
 if(_133){
 _132=_132.replace(/[^A-Za-z0-9\+\/\=]/g,"");
 }
@@ -1281,7 +1281,7 @@ return _135.slice(0,-1*pad);
 }
 return _135;
 };
-base64_encode_array=function(_136){
+CFData.encodeBase64Array=function(_136){
 var pad=(3-(_136.length%3))%3,_137=_136.length+pad,_138=[];
 if(pad>0){
 _136.push(0);
@@ -1307,18 +1307,18 @@ _136.pop();
 }
 return _138.join("");
 };
-base64_decode_to_string=function(_139,_13a){
-return bytes_to_string(base64_decode_to_array(_139,_13a));
+CFData.decodeBase64ToString=function(_139,_13a){
+return CFData.bytesToString(CFData.decodeBase64ToArray(_139,_13a));
 };
-bytes_to_string=function(_13b){
+CFData.bytesToString=function(_13b){
 return String.fromCharCode.apply(NULL,_13b);
 };
-base64_encode_string=function(_13c){
+CFData.encodeBase64String=function(_13c){
 var temp=[];
 for(var i=0;i<_13c.length;i++){
 temp.push(_13c.charCodeAt(i));
 }
-return base64_encode_array(temp);
+return CFData.encodeBase64Array(temp);
 };
 var _13d,_13e,_13f=0;
 function _140(){
