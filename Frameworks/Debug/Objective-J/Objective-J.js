@@ -2466,11 +2466,10 @@ function executeBundle( aBundle, aCallback)
                     executable.execute();
                 else
                 {
-                    executable.addEventListener("dependenciesload", function()
+                    executable.loadFileDependencies(function()
                     {
                         executeStaticResources(index);
                     });
-                    executable.loadFileDependencies();
                     return;
                 }
             }

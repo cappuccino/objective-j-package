@@ -2035,10 +2035,9 @@ var _1f1=new _2f8(_1f0.URL());
 if(_1f1.hasLoadedFileDependencies()){
 _1f1.execute();
 }else{
-_1f1.addEventListener("dependenciesload",function(){
+_1f1.loadFileDependencies(function(){
 _1ee(_1ef);
 });
-_1f1.loadFileDependencies();
 return;
 }
 }else{
