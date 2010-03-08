@@ -405,72 +405,6 @@ var _CPFormatLogMessage = function(aString, aLevel, aTitle)
     else
         return now + " " + aTitle + aLevel + ": " + aString;
 }
-var ANSI_ESC = String.fromCharCode(0x1B);
-var ANSI_CSI = ANSI_ESC + '[';
-var ANSI_TEXT_PROP = 'm';
-var ANSI_RESET = '0';
-var ANSI_BOLD = '1';
-var ANSI_FAINT = '2';
-var ANSI_NORMAL = '22';
-var ANSI_ITALIC = '3';
-var ANSI_UNDER = '4';
-var ANSI_UNDER_DBL = '21';
-var ANSI_UNDER_OFF = '24';
-var ANSI_BLINK = '5';
-var ANSI_BLINK_FAST = '6';
-var ANSI_BLINK_OFF = '25';
-var ANSI_REVERSE = '7';
-var ANSI_POSITIVE = '27';
-var ANSI_CONCEAL = '8';
-var ANSI_REVEAL = '28';
-var ANSI_FG = '3';
-var ANSI_BG = '4';
-var ANSI_FG_INTENSE = '9';
-var ANSI_BG_INTENSE = '10';
-var ANSI_BLACK = '0';
-var ANSI_RED = '1';
-var ANSI_GREEN = '2';
-var ANSI_YELLOW = '3';
-var ANSI_BLUE = '4';
-var ANSI_MAGENTA = '5';
-var ANSI_CYAN = '6';
-var ANSI_WHITE = '7';
-var colorCodeMap = {
-    "black" : ANSI_BLACK,
-    "red" : ANSI_RED,
-    "green" : ANSI_GREEN,
-    "yellow" : ANSI_YELLOW,
-    "blue" : ANSI_BLUE,
-    "magenta" : ANSI_MAGENTA,
-    "cyan" : ANSI_CYAN,
-    "white" : ANSI_WHITE
-}
-function ANSIControlCode(code, parameters)
-{
-    if (parameters == undefined)
-        parameters = "";
-    else if (typeof(parameters) == 'object' && (parameters instanceof Array))
-        parameters = parameters.join(';');
-    return ANSI_CSI + String(parameters) + String(code);
-}
-function ANSITextApplyProperties(string, properties)
-{
-    return ANSIControlCode(ANSI_TEXT_PROP, properties) + String(string) + ANSIControlCode(ANSI_TEXT_PROP);
-}
-ANSITextColorize = function(string, color)
-{
-    if (colorCodeMap[color] == undefined)
-        return string;
-    return ANSITextApplyProperties(string, ANSI_FG + colorCodeMap[color]);
-}
-var levelColorMap = {
-    "fatal": "red",
-    "error": "red",
-    "warn" : "yellow",
-    "info" : "green",
-    "debug": "cyan",
-    "trace": "blue"
-}
 CPLogConsole = function(aString, aLevel, aTitle)
 {
     if (typeof console != "undefined")
@@ -527,21 +461,16 @@ CPLogPopup = function(aString, aLevel, aTitle)
     } catch(e) {
     }
 }
+var CPLogPopupStyle ='<style type="text/css" media="screen"> body{font:10px Monaco,Courier,"Courier New",monospace,mono;padding-top:15px;} div > .fatal,div > .error,div > .warn,div > .info,div > .debug,div > .trace{display:none;overflow:hidden;white-space:pre;padding:0px 5px 0px 5px;margin-top:2px;-moz-border-radius:5px;-webkit-border-radius:5px;} div[wrap="yes"] > div{white-space:normal;} .fatal{background-color:#ffb2b3;} .error{background-color:#ffe2b2;} .warn{background-color:#fdffb2;} .info{background-color:#e4ffb2;} .debug{background-color:#a0e5a0;} .trace{background-color:#99b9ff;} .enfatal .fatal,.enerror .error,.enwarn .warn,.eninfo .info,.endebug .debug,.entrace .trace{display:block;} div#header{background-color:rgba(240,240,240,0.82);position:fixed;top:0px;left:0px;width:100%;border-bottom:1px solid rgba(0,0,0,0.33);text-align:center;} ul#enablers{display:inline-block;margin:1px 15px 0 15px;padding:2px 0 2px 0;} ul#enablers li{display:inline;padding:0px 5px 0px 5px;margin-left:4px;-moz-border-radius:5px;-webkit-border-radius:5px;} [enabled="no"]{opacity:0.25;} ul#options{display:inline-block;margin:0 15px 0px 15px;padding:0 0px;} ul#options li{margin:0 0 0 0;padding:0 0 0 0;display:inline;} </style>';
 function _CPLogInitPopup(logWindow)
 {
     var doc = logWindow.document;
-    doc.writeln("<html><head><title></title></head><body></body></html>");
+    doc.writeln("<html><head><title></title>"+CPLogPopupStyle+"</head><body></body></html>");
     doc.title = CPLogDefaultTitle + " Run Log";
     var head = doc.getElementsByTagName("head")[0];
     var body = doc.getElementsByTagName("body")[0];
     var base = window.location.protocol + "//" + window.location.host + window.location.pathname;
     base = base.substring(0,base.lastIndexOf("/")+1);
-    var link = doc.createElement("link");
-    link.setAttribute("type", "text/css");
-    link.setAttribute("rel", "stylesheet");
-    link.setAttribute("href", base+"Frameworks/Foundation/Resources/log.css");
-    link.setAttribute("media", "screen");
-    head.appendChild(link);
     var div = doc.createElement("div");
     div.setAttribute("id", "header");
     body.appendChild(div);
