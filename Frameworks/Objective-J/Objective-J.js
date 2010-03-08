@@ -138,7 +138,7 @@ throw new SyntaxError("JSON.parse");
 }());
 var _1b=new RegExp("([^%]+|%[\\+\\-\\ \\#0]*[0-9\\*]*(.[0-9\\*]+)?[hlL]?[cbBdieEfgGosuxXpn%@])","g");
 var _1c=new RegExp("(%)([\\+\\-\\ \\#0]*)([0-9\\*]*)((.[0-9\\*]+)?)([hlL]?)([cbBdieEfgGosuxXpn%@])");
-sprintf=function(_1d){
+_2.sprintf=function(_1d){
 var _1d=arguments[0],_1e=_1d.match(_1b),_1f=0,_20="",arg=1;
 for(var i=0;i<_1e.length;i++){
 var t=_1e[i];
@@ -309,7 +309,7 @@ _4c=_3a;
 if(_4b==_44){
 _4b=_3c;
 }
-var _4d=(typeof _4a[0]=="string"&&_4a.length>1)?sprintf.apply(null,_4a):String(_4a[0]);
+var _4d=(typeof _4a[0]=="string"&&_4a.length>1)?_2.sprintf.apply(null,_4a):String(_4a[0]);
 if(_3e[_4b]){
 for(var i=0;i<_3e[_4b].length;i++){
 _3e[_4b][i](_4d,_4b,_4c);
@@ -329,8 +329,8 @@ _49(arguments,_4e);
 var _4f=function(_50,_51,_52){
 var now=new Date();
 _51=(_51==null?"":" ["+_51+"]");
-if(typeof sprintf=="function"){
-return sprintf("%4d-%02d-%02d %02d:%02d:%02d.%03d %s%s: %s",now.getFullYear(),now.getMonth(),now.getDate(),now.getHours(),now.getMinutes(),now.getSeconds(),now.getMilliseconds(),_52,_51,_50);
+if(typeof _2.sprintf=="function"){
+return _2.sprintf("%4d-%02d-%02d %02d:%02d:%02d.%03d %s%s: %s",now.getFullYear(),now.getMonth(),now.getDate(),now.getHours(),now.getMinutes(),now.getSeconds(),now.getMilliseconds(),_52,_51,_50);
 }else{
 return now+" "+_52+_51+": "+_50;
 }
