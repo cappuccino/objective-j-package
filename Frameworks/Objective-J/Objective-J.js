@@ -3454,25 +3454,45 @@ _373.resourceAtURL(_374[_8c],YES);
 }
 _26e.fileImporterForURL(_1a2)(_370.lastPathComponent(),YES,function(){
 _141();
-_376(main);
+_37b(function(){
+var _376=window.location.hash.substring(1),args=[];
+if(_376.length){
+args=_376.split("/");
+for(var i=0,_375=args.length;i<_375;i++){
+args[i]=decodeURIComponent(args[i]);
+}
+}
+var _377=window.location.search.substring(1).split("&"),_378=new CFMutableDictionary();
+for(var i=0,_375=_377.length;i<_375;i++){
+var _379=_377[i].split("=");
+if(!_379[0]){
+continue;
+}
+if(_379[1]==null){
+_379[1]=true;
+}
+_378.setValueForKey(decodeURIComponent(_379[0]),decodeURIComponent(_379[1]));
+}
+main(args,_378);
+});
 });
 });
 };
-var _377=NO;
-function _376(_378){
-if(_377){
-return _378();
+var _37a=NO;
+function _37b(_37c){
+if(_37a){
+return _37c();
 }
 if(window.addEventListener){
-window.addEventListener("load",_378,NO);
+window.addEventListener("load",_37c,NO);
 }else{
 if(window.attachEvent){
-window.attachEvent("onload",_378);
+window.attachEvent("onload",_37c);
 }
 }
 };
-_376(function(){
-_377=YES;
+_37b(function(){
+_37a=YES;
 });
 if(typeof OBJJ_AUTO_BOOTSTRAP==="undefined"||OBJJ_AUTO_BOOTSTRAP){
 _2.bootstrap();
