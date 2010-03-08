@@ -1475,11 +1475,10 @@ this._UID=objj_generateObjectUID();
 this._string=aURL;
 this._baseURL=_171;
 };
-CFURL.displayName="CFURL";
-var _175={};
 CFURL.prototype.UID=function(){
 return this._UID;
 };
+var _175={};
 CFURL.prototype.mappedURL=function(){
 return _175[this.absoluteString()]||this;
 };
@@ -2978,9 +2977,6 @@ this._function=new Function(_2e8,code);
 _292.prototype.fileDependencies=function(){
 return this._fileDependencies;
 };
-_292.prototype.scope=function(){
-return this._scope;
-};
 _292.prototype.hasLoadedFileDependencies=function(){
 return this._fileDependencyStatus===_2de;
 };
@@ -3152,9 +3148,6 @@ return;
 }
 this._hasExecuted=YES;
 _292.prototype.execute.call(this);
-};
-_31c.prototype.URL=function(){
-return this._URL;
 };
 _31c.prototype.hasExecuted=function(){
 return this._hasExecuted;

@@ -1773,19 +1773,22 @@ CFURL = function( aURL, aBaseURL)
     this._baseURL = aBaseURL;
 }
 CFURL.displayName = "CFURL";
-var URLMap = { };
 CFURL.prototype.UID = function()
 {
     return this._UID;
 }
+CFURL.prototype.UID.displayName = "CFURL.prototype.UID";
+var URLMap = { };
 CFURL.prototype.mappedURL = function()
 {
     return URLMap[this.absoluteString()] || this;
 }
+CFURL.prototype.mappedURL.displayName = "CFURL.prototype.mappedURL";
 CFURL.setMappedURLForURL = function( fromURL, toURL)
 {
     URLMap[fromURL.absoluteString()] = toURL;
 }
+CFURL.setMappedURLForURL.displayName = "CFURL.setMappedURLForURL";
 CFURL.prototype.schemeAndAuthority = function()
 {
     var string = "",
@@ -1797,16 +1800,19 @@ CFURL.prototype.schemeAndAuthority = function()
         string += "//" + authority;
     return string;
 }
+CFURL.prototype.schemeAndAuthority.displayName = "CFURL.prototype.schemeAndAuthority";
 CFURL.prototype.absoluteString = function()
 {
     if (this._absoluteString === undefined)
         this._absoluteString = this.absoluteURL().string();
     return this._absoluteString;
 }
+CFURL.prototype.absoluteString.displayName = "CFURL.prototype.absoluteString";
 CFURL.prototype.toString = function()
 {
     return this.absoluteString();
 }
+CFURL.prototype.toString.displayName = "CFURL.prototype.toString";
 function resolveURL(aURL)
 {
     aURL = aURL.standardizedURL();
@@ -1914,6 +1920,7 @@ CFURL.prototype.absoluteURL = function()
         this._absoluteURL = resolveURL(this);
     return this._absoluteURL;
 }
+CFURL.prototype.absoluteURL.displayName = "CFURL.prototype.absoluteURL";
 CFURL.prototype.standardizedURL = function()
 {
     if (this._standardizedURL === undefined)
@@ -1937,6 +1944,7 @@ CFURL.prototype.standardizedURL = function()
     }
     return this._standardizedURL;
 }
+CFURL.prototype.standardizedURL.displayName = "CFURL.prototype.standardizedURL";
 function CFURLPartsCreateCopy(parts)
 {
     var copiedParts = { },
@@ -1952,6 +1960,7 @@ CFURL.prototype.string = function()
 {
     return this._string;
 }
+CFURL.prototype.string.displayName = "CFURL.prototype.string";
 CFURL.prototype.authority = function()
 {
     var authority = ((this)._parts || CFURLGetParts(this)).authority;
@@ -1960,6 +1969,7 @@ CFURL.prototype.authority = function()
     var baseURL = this.baseURL();
     return baseURL && baseURL.authority() || "";
 }
+CFURL.prototype.authority.displayName = "CFURL.prototype.authority";
 CFURL.prototype.hasDirectoryPath = function()
 {
     var hasDirectoryPath = this._hasDirectoryPath;
@@ -1976,14 +1986,17 @@ CFURL.prototype.hasDirectoryPath = function()
     }
     return this._hasDirectoryPath;
 }
+CFURL.prototype.hasDirectoryPath.displayName = "CFURL.prototype.hasDirectoryPath";
 CFURL.prototype.hostName = function()
 {
     return this.authority();
 }
+CFURL.prototype.hostName.displayName = "CFURL.prototype.hostName";
 CFURL.prototype.fragment = function()
 {
     return ((this)._parts || CFURLGetParts(this)).fragment;
 }
+CFURL.prototype.fragment.displayName = "CFURL.prototype.fragment";
 CFURL.prototype.lastPathComponent = function()
 {
     if (this._lastPathComponent === undefined)
@@ -1997,14 +2010,17 @@ CFURL.prototype.lastPathComponent = function()
     }
     return this._lastPathComponent;
 }
+CFURL.prototype.lastPathComponent.displayName = "CFURL.prototype.lastPathComponent";
 CFURL.prototype.path = function()
 {
     return ((this)._parts || CFURLGetParts(this)).path;
 }
+CFURL.prototype.path.displayName = "CFURL.prototype.path";
 CFURL.prototype.pathComponents = function()
 {
     return ((this)._parts || CFURLGetParts(this)).pathComponents;
 }
+CFURL.prototype.pathComponents.displayName = "CFURL.prototype.pathComponents";
 CFURL.prototype.pathExtension = function()
 {
     var lastPathComponent = this.lastPathComponent();
@@ -2014,10 +2030,12 @@ CFURL.prototype.pathExtension = function()
     var index = lastPathComponent.lastIndexOf(".");
     return index <= 0 ? "" : lastPathComponent.substring(index + 1);
 }
+CFURL.prototype.pathExtension.displayName = "CFURL.prototype.pathExtension";
 CFURL.prototype.queryString = function()
 {
     return ((this)._parts || CFURLGetParts(this)).queryString;
 }
+CFURL.prototype.queryString.displayName = "CFURL.prototype.queryString";
 CFURL.prototype.scheme = function()
 {
     var scheme = this._scheme;
@@ -2033,32 +2051,39 @@ CFURL.prototype.scheme = function()
     }
     return scheme;
 }
+CFURL.prototype.scheme.displayName = "CFURL.prototype.scheme";
 CFURL.prototype.user = function()
 {
     return ((this)._parts || CFURLGetParts(this)).user;
 }
+CFURL.prototype.user.displayName = "CFURL.prototype.user";
 CFURL.prototype.password = function()
 {
     return ((this)._parts || CFURLGetParts(this)).password;
 }
+CFURL.prototype.password.displayName = "CFURL.prototype.password";
 CFURL.prototype.portNumber = function()
 {
     return ((this)._parts || CFURLGetParts(this)).portNumber;
 }
+CFURL.prototype.portNumber.displayName = "CFURL.prototype.portNumber";
 CFURL.prototype.domain = function()
 {
     return ((this)._parts || CFURLGetParts(this)).domain;
 }
+CFURL.prototype.domain.displayName = "CFURL.prototype.domain";
 CFURL.prototype.baseURL = function()
 {
     return this._baseURL;
 }
+CFURL.prototype.baseURL.displayName = "CFURL.prototype.baseURL";
 CFURL.prototype.asDirectoryPathURL = function()
 {
     if (this.hasDirectoryPath())
         return this;
     return new CFURL(this.lastPathComponent() + "/", this);
 }
+CFURL.prototype.asDirectoryPathURL.displayName = "CFURL.prototype.asDirectoryPathURL";
 function CFURLGetResourcePropertiesForKeys( aURL)
 {
     if (!aURL._resourcePropertiesForKeys)
@@ -2069,16 +2094,19 @@ CFURL.prototype.resourcePropertyForKey = function( aKey)
 {
     return CFURLGetResourcePropertiesForKeys(this).valueForKey(aKey);
 }
+CFURL.prototype.resourcePropertyForKey.displayName = "CFURL.prototype.resourcePropertyForKey";
 CFURL.prototype.setResourcePropertyForKey = function( aKey, aValue)
 {
     CFURLGetResourcePropertiesForKeys(this).setValueForKey(aKey, aValue);
 }
+CFURL.prototype.setResourcePropertyForKey.displayName = "CFURL.prototype.setResourcePropertyForKey";
 CFURL.prototype.staticResourceData = function()
 {
     var data = new CFMutableData();
     data.setRawString(StaticResource.resourceAtURL(this).contents());
     return data;
 }
+CFURL.prototype.staticResourceData.displayName = "CFURL.prototype.staticResourceData";
 function MarkedStream( aString)
 {
     this._string = aString;
@@ -3489,16 +3517,19 @@ Executable.prototype.URL = function()
 {
     return this._URL;
 }
+Executable.prototype.URL.displayName = "Executable.prototype.URL";
 Executable.prototype.functionParameters = function()
 {
     var functionParameters = ["global", "objj_executeFile", "objj_importFile"];
     return functionParameters;
 }
+Executable.prototype.functionParameters.displayName = "Executable.prototype.functionParameters";
 Executable.prototype.functionArguments = function()
 {
     var functionArguments = [global, this.fileExecuter(), this.fileImporter()];
     return functionArguments;
 }
+Executable.prototype.functionArguments.displayName = "Executable.prototype.functionArguments";
 Executable.prototype.execute = function()
 {
     var oldContextBundle = CONTEXT_BUNDLE;
@@ -3507,10 +3538,12 @@ Executable.prototype.execute = function()
     CONTEXT_BUNDLE = oldContextBundle;
     return result;
 }
+Executable.prototype.execute.displayName = "Executable.prototype.execute";
 Executable.prototype.code = function()
 {
     return this._code;
 }
+Executable.prototype.code.displayName = "Executable.prototype.code";
 Executable.prototype.setCode = function(code)
 {
     this._code = code;
@@ -3520,18 +3553,17 @@ Executable.prototype.setCode = function(code)
         this._function = new Function(parameters, code);
     this._function.displayName = absoluteString;
 }
+Executable.prototype.setCode.displayName = "Executable.prototype.setCode";
 Executable.prototype.fileDependencies = function()
 {
     return this._fileDependencies;
 }
-Executable.prototype.scope = function()
-{
-    return this._scope;
-}
+Executable.prototype.fileDependencies.displayName = "Executable.prototype.fileDependencies";
 Executable.prototype.hasLoadedFileDependencies = function()
 {
     return this._fileDependencyStatus === ExecutableLoadedFileDependencies;
 }
+Executable.prototype.hasLoadedFileDependencies.displayName = "Executable.prototype.hasLoadedFileDependencies";
 var fileDependencyLoadCount = 0,
     fileDependencyExecutables = [],
     fileDependencyMarkers = { };
@@ -3548,6 +3580,7 @@ Executable.prototype.loadFileDependencies = function(aCallback)
         loadFileDependenciesForExecutable(this);
     }
 }
+Executable.prototype.loadFileDependencies.displayName = "Executable.prototype.loadFileDependencies";
 function loadFileDependenciesForExecutable( anExecutable)
 {
     fileDependencyExecutables.push(anExecutable);
@@ -3606,18 +3639,22 @@ Executable.prototype.referenceURL = function()
         this._referenceURL = new CFURL(".", this.URL());
     return this._referenceURL;
 }
+Executable.prototype.referenceURL.displayName = "Executable.prototype.referenceURL";
 Executable.prototype.fileImporter = function()
 {
     return Executable.fileImporterForURL(this.referenceURL());
 }
+Executable.prototype.fileImporter.displayName = "Executable.prototype.fileImporter";
 Executable.prototype.fileExecuter = function()
 {
     return Executable.fileExecuterForURL(this.referenceURL());
 }
+Executable.prototype.fileExecuter.displayName = "Executable.prototype.fileExecuter";
 Executable.prototype.fileExecutableSearcher = function()
 {
     return Executable.fileExecutableSearcherForURL(this.referenceURL());
 }
+Executable.prototype.fileExecutableSearcher.displayName = "Executable.prototype.fileExecutableSearcher";
 var cachedFileExecuters = { };
 Executable.fileExecuterForURL = function( aURL)
 {
@@ -3640,6 +3677,7 @@ Executable.fileExecuterForURL = function( aURL)
     }
     return cachedFileExecuter;
 }
+Executable.fileExecuterForURL.displayName = "Executable.fileExecuterForURL";
 var cachedFileImporters = { };
 Executable.fileImporterForURL = function( aURL)
 {
@@ -3667,6 +3705,7 @@ Executable.fileImporterForURL = function( aURL)
     }
     return cachedFileImporter;
 }
+Executable.fileImporterForURL.displayName = "Executable.fileImporterForURL";
 var cachedFileExecutableSearchers = { },
     cachedFileExecutableSearchResults = { };
 Executable.fileExecutableSearcherForURL = function( referenceURL)
@@ -3703,6 +3742,7 @@ Executable.fileExecutableSearcherForURL = function( referenceURL)
     }
     return cachedFileExecutableSearcher;
 }
+Executable.fileExecutableSearcherForURL.displayName = "Executable.fileExecutableSearcherForURL";
 var FileExecutablesForURLStrings = { };
 function FileExecutable( aURL, anExecutable)
 {
@@ -3735,14 +3775,12 @@ FileExecutable.prototype.execute = function( shouldForce)
     this._hasExecuted = YES;
     Executable.prototype.execute.call(this);
 }
-FileExecutable.prototype.URL = function()
-{
-    return this._URL;
-}
+FileExecutable.prototype.execute.displayName = "FileExecutable.prototype.execute";
 FileExecutable.prototype.hasExecuted = function()
 {
     return this._hasExecuted;
 }
+FileExecutable.prototype.hasExecuted.displayName = "FileExecutable.prototype.hasExecuted";
 function decompile( aString, aURL)
 {
     var stream = new MarkedStream(aString);
@@ -3770,12 +3808,14 @@ objj_ivar = function( aName, aType)
     this.name = aName;
     this.type = aType;
 }
+objj_ivar.displayName = "objj_ivar";
 objj_method = function( aName, anImplementation, types)
 {
     this.name = aName;
     this.method_imp = anImplementation;
     this.types = types;
 }
+objj_method.displayName = "objj_method";
 objj_class = function()
 {
     this.isa = NULL;
@@ -3791,34 +3831,40 @@ objj_class = function()
     this.allocator = function() { };
     this._UID = -1;
 }
+objj_class.displayName = "objj_class";
 objj_object = function()
 {
     this.isa = NULL;
     this._UID = -1;
 }
+objj_object.displayName = "objj_object";
 class_getName = function( aClass)
 {
     if (aClass == Nil)
         return "";
     return aClass.name;
 }
+class_getName.displayName = "class_getName";
 class_isMetaClass = function( aClass)
 {
     if (!aClass)
         return NO;
     return ((aClass.info & (CLS_META)));
 }
+class_isMetaClass.displayName = "class_isMetaClass";
 class_getSuperclass = function( aClass)
 {
     if (aClass == Nil)
         return Nil;
     return aClass.super_class;
 }
+class_getSuperclass.displayName = "class_getSuperclass"
 class_setSuperclass = function( aClass, aSuperClass)
 {
     aClass.super_class = aSuperClass;
     aClass.isa.super_class = aSuperClass.isa;
 }
+class_setSuperclass.displayName = "class_setSuperclass";
 class_addIvar = function( aClass, aName, aType)
 {
     var thePrototype = aClass.allocator.prototype;
@@ -3828,6 +3874,7 @@ class_addIvar = function( aClass, aName, aType)
     thePrototype[aName] = NULL;
     return YES;
 }
+class_addIvar.displayName = "class_addIvar";
 class_addIvars = function( aClass, ivars)
 {
     var index = 0,
@@ -3844,10 +3891,12 @@ class_addIvars = function( aClass, ivars)
         }
     }
 }
+class_addIvars.displayName = "class_addIvars";
 class_copyIvarList = function( aClass)
 {
     return aClass.ivars.slice(0);
 }
+class_copyIvarList.displayName = "class_copyIvarList";
 class_addMethod = function( aClass, aName, anImplementation, types)
 {
     if (aClass.method_hash[aName])
@@ -3860,6 +3909,7 @@ class_addMethod = function( aClass, aName, anImplementation, types)
         class_addMethod((((aClass.info & (CLS_META))) ? aClass : aClass.isa), aName, anImplementation, types);
     return YES;
 }
+class_addMethod.displayName = "class_addMethod";
 class_addMethods = function( aClass, methods)
 {
     var index = 0,
@@ -3878,6 +3928,7 @@ class_addMethods = function( aClass, methods)
     if (!((aClass.info & (CLS_META))) && (((aClass.info & (CLS_META))) ? aClass : aClass.isa).isa === (((aClass.info & (CLS_META))) ? aClass : aClass.isa))
         class_addMethods((((aClass.info & (CLS_META))) ? aClass : aClass.isa), methods);
 }
+class_addMethods.displayName = "class_addMethods";
 class_getInstanceMethod = function( aClass, aSelector)
 {
     if (!aClass || !aSelector)
@@ -3885,6 +3936,7 @@ class_getInstanceMethod = function( aClass, aSelector)
     var method = aClass.method_dtable[aSelector];
     return method ? method : NULL;
 }
+class_getInstanceMethod.displayName = "class_getInstanceMethod";
 class_getClassMethod = function( aClass, aSelector)
 {
     if (!aClass || !aSelector)
@@ -3892,10 +3944,12 @@ class_getClassMethod = function( aClass, aSelector)
     var method = (((aClass.info & (CLS_META))) ? aClass : aClass.isa).method_dtable[aSelector];
     return method ? method : NULL;
 }
+class_getClassMethod.displayName = "class_getClassMethod";
 class_copyMethodList = function( aClass)
 {
     return aClass.method_list.slice(0);
 }
+class_copyMethodList.displayName = "class_copyMethodList";
 class_replaceMethod = function( aClass, aSelector, aMethodImplementation)
 {
     if (!aClass || !aSelector)
@@ -3907,6 +3961,7 @@ class_replaceMethod = function( aClass, aSelector, aMethodImplementation)
     method.method_imp = aMethodImplementation;
     return method_imp;
 }
+class_replaceMethod.displayName = "class_replaceMethod";
 var _class_initialize = function( aClass)
 {
     var meta = (((aClass.info & (CLS_META))) ? aClass : aClass.isa);
@@ -3930,6 +3985,7 @@ class_getMethodImplementation = function( aClass, aSelector)
     if (!((((aClass.info & (CLS_META))) ? aClass : aClass.isa).info & (CLS_INITIALIZED))) _class_initialize(aClass); var method = aClass.method_dtable[aSelector]; if (!method) method = _objj_forward; var implementation = method.method_imp;;
     return implementation;
 }
+class_getMethodImplementation.displayName = "class_getMethodImplementation";
 var REGISTERED_CLASSES = { };
 objj_allocateClassPair = function( superclass, aName)
 {
@@ -3961,6 +4017,7 @@ objj_allocateClassPair = function( superclass, aName)
     metaClassObject._UID = objj_generateObjectUID();
     return classObject;
 }
+objj_allocateClassPair.displayName = "objj_allocateClassPair";
 var CONTEXT_BUNDLE = nil;
 objj_registerClassPair = function( aClass)
 {
@@ -3968,6 +4025,7 @@ objj_registerClassPair = function( aClass)
     REGISTERED_CLASSES[aClass.name] = aClass;
     addClassToBundle(aClass, CONTEXT_BUNDLE);
 }
+objj_registerClassPair.displayName = "objj_registerClassPair";
 class_createInstance = function( aClass)
 {
     if (!aClass)
@@ -3977,6 +4035,7 @@ class_createInstance = function( aClass)
     object._UID = objj_generateObjectUID();
     return object;
 }
+class_createInstance.displayName = "class_createInstance";
 var prototype_bug = function() { }
 prototype_bug.prototype.member = false;
 with (new prototype_bug())
@@ -4011,11 +4070,13 @@ object_getClassName = function( anObject)
     var theClass = anObject.isa;
     return theClass ? class_getName(theClass) : "";
 }
+object_getClassName.displayName = "object_getClassName";
 objj_lookUpClass = function( aName)
 {
     var theClass = REGISTERED_CLASSES[aName];
     return theClass ? theClass : Nil;
 }
+objj_lookUpClass.displayName = "objj_lookUpClass";
 objj_getClass = function( aName)
 {
     var theClass = REGISTERED_CLASSES[aName];
@@ -4024,19 +4085,23 @@ objj_getClass = function( aName)
     }
     return theClass ? theClass : Nil;
 }
+objj_getClass.displayName = "objj_getClass";
 objj_getMetaClass = function( aName)
 {
     var theClass = objj_getClass(aName);
     return (((theClass.info & (CLS_META))) ? theClass : theClass.isa);
 }
+objj_getMetaClass.displayName = "objj_getMetaClass";
 ivar_getName = function(anIvar)
 {
     return anIvar.name;
 }
+ivar_getName.displayName = "ivar_getName";
 ivar_getTypeEncoding = function(anIvar)
 {
     return anIvar.type;
 }
+ivar_getTypeEncoding.displayName = "ivar_getTypeEncoding";
 objj_msgSend = function( aReceiver, aSelector)
 {
     if (aReceiver == nil)
@@ -4051,6 +4116,7 @@ objj_msgSend = function( aReceiver, aSelector)
     }
     return implementation.apply(aReceiver, arguments);
 }
+objj_msgSend.displayName = "objj_msgSend";
 objj_msgSendSuper = function( aSuper, aSelector)
 {
     var super_class = aSuper.super_class;
@@ -4058,20 +4124,24 @@ objj_msgSendSuper = function( aSuper, aSelector)
     if (!((((super_class.info & (CLS_META))) ? super_class : super_class.isa).info & (CLS_INITIALIZED))) _class_initialize(super_class); var method = super_class.method_dtable[aSelector]; if (!method) method = _objj_forward; var implementation = method.method_imp;;
     return implementation.apply(aSuper.receiver, arguments);
 }
+objj_msgSendSuper.displayName = "objj_msgSendSuper";
 method_getName = function( aMethod)
 {
     return aMethod.name;
 }
+method_getName.displayName = "method_getName";
 method_getImplementation = function( aMethod)
 {
     return aMethod.method_imp;
 }
+method_getImplementation.displayName = "method_getImplementation";
 method_setImplementation = function( aMethod, anImplementation)
 {
     var oldImplementation = aMethod.method_imp;
     aMethod.method_imp = anImplementation;
     return oldImplementation;
 }
+method_setImplementation.displayName = "method_setImplementation";
 method_exchangeImplementations = function( lhs, rhs)
 {
     var lhs_imp = method_getImplementation(lhs),
@@ -4079,22 +4149,27 @@ method_exchangeImplementations = function( lhs, rhs)
     method_setImplementation(lhs, rhs_imp);
     method_setImplementation(rhs, lhs_imp);
 }
+method_exchangeImplementations.displayName = "method_exchangeImplementations";
 sel_getName = function(aSelector)
 {
     return aSelector ? aSelector : "<null selector>";
 }
+sel_getName.displayName = "sel_getName";
 sel_getUid = function( aName)
 {
     return aName;
 }
+sel_getUid.displayName = "sel_getUid";
 sel_isEqual = function( lhs, rhs)
 {
     return lhs === rhs;
 }
+sel_isEqual.displayName = "sel_isEqual";
 sel_registerName = function( aName)
 {
     return aName;
 }
+sel_registerName.displayName = "sel_registerName";
 function objj_debug_object_format(aReceiver)
 {
     return (aReceiver && aReceiver.isa) ? sprintf("<%s %#08x>", (((aReceiver.info & (CLS_META))) ? aReceiver : aReceiver.isa).name, aReceiver._UID) : String(aReceiver);
