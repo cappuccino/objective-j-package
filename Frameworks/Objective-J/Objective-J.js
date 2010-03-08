@@ -2964,12 +2964,13 @@ _2d4();
 }
 };
 function _2d4(){
-var _2d7=0,_2d8=_2c6.length;
-for(;_2d7<_2d8;++_2d7){
-_2c6[_2d7]._fileDependencyStatus=_2ba;
+var _2d7=_2c6,_8c=0,_2d8=_2d7.length;
+_2c6=[];
+for(;_8c<_2d8;++_8c){
+_2d7[_8c]._fileDependencyStatus=_2ba;
 }
-for(_2d7=0;_2d7<_2d8;++_2d7){
-var _2d9=_2c6[_2d7],_2da=_2d9._fileDependencyCallbacks,_2db=0,_2dc=_2da.length;
+for(_8c=0;_8c<_2d8;++_8c){
+var _2d9=_2d7[_8c],_2da=_2d9._fileDependencyCallbacks,_2db=0,_2dc=_2da.length;
 for(;_2db<_2dc;++_2db){
 _2da[_2db]();
 }
