@@ -2107,31 +2107,40 @@ CFBundle = function( aURL)
     this._bundleURL = aURL;
     this._resourcesDirectoryURL = new CFURL("Resources/", aURL);
     this._staticResource = NULL;
+    this._isValid = NO;
     this._loadStatus = CFBundleUnloaded;
     this._loadRequests = [];
     this._infoDictionary = new CFDictionary();
     this._eventDispatcher = new EventDispatcher(this);
 }
+CFBundle.displayName = "CFBundle";
 CFBundle.environments = function()
 {
     return ["Browser","ObjJ"];
 }
+CFBundle.environments.displayName = "CFBundle.environments";
 CFBundle.bundleContainingURL = function( aURL)
 {
     aURL = new CFURL(".", makeAbsoluteURL(aURL));
-    while (aURL.path() !== "/")
+    var previousURLString,
+        URLString = aURL.absoluteString();
+    while (!previousURLString || previousURLString !== URLString)
     {
-        var bundle = CFBundlesForURLStrings[aURL.absoluteString()];
-        if (bundle)
+        var bundle = CFBundlesForURLStrings[URLString];
+        if (bundle && bundle._isValid)
             return bundle;
         aURL = new CFURL("..", aURL);
+        previousURLString = URLString;
+        URLString = aURL.absoluteString();
     }
     return NULL;
 }
+CFBundle.bundleContainingURL.displayName = "CFBundle.bundleContainingURL";
 CFBundle.mainBundle = function()
 {
     return new CFBundle(mainBundleURL);
 }
+CFBundle.mainBundle.displayName = "CFBundle.mainBundle";
 function addClassToBundle(aClass, aBundle)
 {
     if (aBundle)
@@ -2141,14 +2150,17 @@ CFBundle.bundleForClass = function( aClass)
 {
     return CFBundlesForClasses[aClass.name] || CFBundle.mainBundle();
 }
+CFBundle.bundleForClass.displayName = "CFBundle.bundleForClass";
 CFBundle.prototype.bundleURL = function()
 {
     return this._bundleURL;
 }
+CFBundle.prototype.bundleURL.displayName = "CFBundle.prototype.bundleURL";
 CFBundle.prototype.resourcesDirectoryURL = function()
 {
     return this._resourcesDirectoryURL;
 }
+CFBundle.prototype.resourcesDirectoryURL.displayName = "CFBundle.prototype.resourcesDirectoryURL";
 CFBundle.prototype.resourceURL = function( aResourceName, aType, aSubDirectory)
  {
     if (aType)
@@ -2158,12 +2170,14 @@ CFBundle.prototype.resourceURL = function( aResourceName, aType, aSubDirectory)
     var resourceURL = (new CFURL(aResourceName, this.resourcesDirectoryURL())).mappedURL();
     return resourceURL.absoluteURL();
 }
+CFBundle.prototype.resourceURL.displayName = "CFBundle.prototype.resourceURL";
 CFBundle.prototype.mostEligibleEnvironmentURL = function()
 {
     if (this._mostEligibleEnvironmentURL === undefined)
         this._mostEligibleEnvironmentURL = new CFURL(this.mostEligibleEnvironment() + ".environment/", this.bundleURL());
     return this._mostEligibleEnvironmentURL;
 }
+CFBundle.prototype.mostEligibleEnvironmentURL.displayName = "CFBundle.prototype.mostEligibleEnvironmentURL";
 CFBundle.prototype.executableURL = function()
 {
     if (this._executableURL === undefined)
@@ -2176,14 +2190,17 @@ CFBundle.prototype.executableURL = function()
     }
     return this._executableURL;
 }
+CFBundle.prototype.executableURL.displayName = "CFBundle.prototype.executableURL";
 CFBundle.prototype.infoDictionary = function()
 {
     return this._infoDictionary;
 }
+CFBundle.prototype.infoDictionary.displayName = "CFBundle.prototype.infoDictionary";
 CFBundle.prototype.valueForInfoDictionaryKey = function( aKey)
 {
     return this._infoDictionary.valueForKey(aKey);
 }
+CFBundle.prototype.valueForInfoDictionaryKey.displayName = "CFBundle.prototype.valueForInfoDictionaryKey";
 CFBundle.prototype.hasSpritedImages = function()
 {
     var environments = this._infoDictionary.valueForKey("CPBundleEnvironmentsWithImageSprites") || [],
@@ -2194,10 +2211,12 @@ CFBundle.prototype.hasSpritedImages = function()
             return YES;
     return NO;
 }
+CFBundle.prototype.hasSpritedImages.displayName = "CFBundle.prototype.hasSpritedImages";
 CFBundle.prototype.environments = function()
 {
     return this._infoDictionary.valueForKey("CPBundleEnvironments") || ["ObjJ"];
 }
+CFBundle.prototype.environments.displayName = "CFBundle.prototype.environments";
 CFBundle.prototype.mostEligibleEnvironment = function( environments)
 {
     environments = environments || this.environments();
@@ -2215,10 +2234,12 @@ CFBundle.prototype.mostEligibleEnvironment = function( environments)
     }
     return NULL;
 }
+CFBundle.prototype.mostEligibleEnvironment.displayName = "CFBundle.prototype.mostEligibleEnvironment";
 CFBundle.prototype.isLoading = function()
 {
     return this._loadStatus & CFBundleLoading;
 }
+CFBundle.prototype.isLoading.displayName = "CFBundle.prototype.isLoading";
 CFBundle.prototype.load = function( shouldExecute)
 {
     if (this._loadStatus !== CFBundleUnloaded)
@@ -2237,7 +2258,10 @@ CFBundle.prototype.load = function( shouldExecute)
         function onsuccess( anEvent)
         {
             self._loadStatus &= ~CFBundleLoadingInfoPlist;
-            self._infoDictionary = anEvent.request.responsePropertyList();
+            var infoDictionary = anEvent.request.responsePropertyList();
+            self._isValid = !!infoDictionary || CFBundle.mainBundle() === self;
+            if (infoDictionary)
+                self._infoDictionary = infoDictionary;
             if (!self._infoDictionary)
             {
                 finishBundleLoadingWithError(self, new Error("Could not load bundle at \"" + path + "\""));
@@ -2249,12 +2273,14 @@ CFBundle.prototype.load = function( shouldExecute)
         }
         function onfailure()
         {
+            self._isValid = CFBundle.mainBundle() === self;
             self._loadStatus = CFBundleUnloaded;
             finishBundleLoadingWithError(self, new Error("Could not load bundle at \"" + self.bundleURL() + "\""));
         }
         new FileRequest(new CFURL("Info.plist", self.bundleURL()), onsuccess, onfailure);
     });
 }
+CFBundle.prototype.load.displayName = "CFBundle.prototype.load";
 function finishBundleLoadingWithError( aBundle, anError)
 {
     resolveStaticResource(aBundle._staticResource);
@@ -2540,14 +2566,17 @@ CFBundle.prototype.addEventListener = function( anEventName, anEventListener)
 {
     this._eventDispatcher.addEventListener(anEventName, anEventListener);
 }
+CFBundle.prototype.addEventListener.displayName = "CFBundle.prototype.addEventListener";
 CFBundle.prototype.removeEventListener = function( anEventName, anEventListener)
 {
     this._eventDispatcher.removeEventListener(anEventName, anEventListener);
 }
+CFBundle.prototype.removeEventListener.displayName = "CFBundle.prototype.removeEventListener";
 CFBundle.prototype.onerror = function( anEvent)
 {
     throw anEvent.error;
 }
+CFBundle.prototype.onerror.displayName = "CFBundle.prototype.onerror";
 CFBundle.prototype.bundlePath = function()
 {
     return this._bundleURL.absoluteURL().path();
