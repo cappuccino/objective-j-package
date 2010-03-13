@@ -700,14 +700,20 @@ _9e.dispatchEvent({type:_a2,request:_9d});
 };
 function _a3(_a4,_a5,_a6){
 var _a7=new CFHTTPRequest();
-_a7.onsuccess=_83(_a5);
-_a7.onfailure=_83(_a6);
 if(_a4.pathExtension()==="plist"){
 _a7.overrideMimeType("text/xml");
 }
-_a7.open("GET",_a4.absoluteString(),YES);
+if(_a3.async){
+_a7.onsuccess=_83(_a5);
+_a7.onfailure=_83(_a6);
+}else{
+_a7.onsuccess=_a5;
+_a7.onfailure=_a6;
+}
+_a7.open("GET",_a4.absoluteString(),_a3.async);
 _a7.send("");
 };
+_a3.async=YES;
 var _a8=0;
 objj_generateObjectUID=function(){
 return _a8++;

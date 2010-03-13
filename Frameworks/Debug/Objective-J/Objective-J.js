@@ -811,13 +811,22 @@ function determineAndDispatchHTTPRequestEvents( aRequest)
 function FileRequest( aURL, onsuccess, onfailure)
 {
     var request = new CFHTTPRequest();
-    request.onsuccess = Asynchronous(onsuccess);
-    request.onfailure = Asynchronous(onfailure);
     if (aURL.pathExtension() === "plist")
         request.overrideMimeType("text/xml");
-    request.open("GET", aURL.absoluteString(), YES);
+    if (FileRequest.async)
+    {
+        request.onsuccess = Asynchronous(onsuccess);
+        request.onfailure = Asynchronous(onfailure);
+    }
+    else
+    {
+        request.onsuccess = onsuccess;
+        request.onfailure = onfailure;
+    }
+    request.open("GET", aURL.absoluteString(), FileRequest.async);
     request.send("");
 }
+FileRequest.async = YES;
 var OBJECT_COUNT = 0;
 objj_generateObjectUID = function()
 {
