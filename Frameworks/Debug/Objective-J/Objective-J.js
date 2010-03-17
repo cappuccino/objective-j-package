@@ -4202,6 +4202,24 @@ sel_registerName = function( aName)
     return aName;
 }
 sel_registerName.displayName = "sel_registerName";
+objj_eval = function( aString)
+{
+    var url = exports.pageURL;
+    var asyncLoaderSaved = exports.asyncLoader;
+    exports.asyncLoader = NO;
+    var executable = exports.preprocess(aString, url, 0);
+    if (!executable.hasLoadedFileDependencies())
+        executable.loadFileDependencies();
+    global._objj_eval_scope = {};
+    global._objj_eval_scope.objj_executeFile = Executable.fileExecuterForURL(url);
+    global._objj_eval_scope.objj_importFile = Executable.fileImporterForURL(url);
+    var code = "with(_objj_eval_scope){" + executable._code + "\n//*/\n}";
+    var result;
+        result = eval(code);
+    exports.asyncLoader = asyncLoaderSaved;
+    return result;
+}
+exports.objj_eval = objj_eval;
 function objj_debug_object_format(aReceiver)
 {
     return (aReceiver && aReceiver.isa) ? exports.sprintf("<%s %#08x>", (((aReceiver.info & (CLS_META))) ? aReceiver : aReceiver.isa).name, aReceiver._UID) : String(aReceiver);
