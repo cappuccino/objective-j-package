@@ -818,7 +818,7 @@ function FileRequest( aURL, onsuccess, onfailure)
     var request = new CFHTTPRequest();
     if (aURL.pathExtension() === "plist")
         request.overrideMimeType("text/xml");
-    if (FileRequest.async)
+    if (exports.asyncLoader)
     {
         request.onsuccess = Asynchronous(onsuccess);
         request.onfailure = Asynchronous(onfailure);
@@ -828,10 +828,10 @@ function FileRequest( aURL, onsuccess, onfailure)
         request.onsuccess = onsuccess;
         request.onfailure = onfailure;
     }
-    request.open("GET", aURL.absoluteString(), FileRequest.async);
+    request.open("GET", aURL.absoluteString(), exports.asyncLoader);
     request.send("");
 }
-FileRequest.async = YES;
+exports.asyncLoader = YES;
 var URLCache = { };
 CFHTTPRequest._cacheRequest = function( aURL, status, headers, body)
 {
@@ -3585,9 +3585,12 @@ var fileDependencyLoadCount = 0,
 Executable.prototype.loadFileDependencies = function(aCallback)
 {
     var status = this._fileDependencyStatus;
-    if (status === ExecutableLoadedFileDependencies)
-        return aCallback();
-    this._fileDependencyCallbacks.push(aCallback)
+    if (aCallback)
+    {
+        if (status === ExecutableLoadedFileDependencies)
+            return aCallback();
+        this._fileDependencyCallbacks.push(aCallback);
+    }
     if (status === ExecutableUnloadedFileDependencies)
     {
         if (fileDependencyLoadCount)

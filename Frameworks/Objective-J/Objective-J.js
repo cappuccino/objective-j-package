@@ -708,17 +708,17 @@ var _ac=new CFHTTPRequest();
 if(_a9.pathExtension()==="plist"){
 _ac.overrideMimeType("text/xml");
 }
-if(_a8.async){
+if(_2.asyncLoader){
 _ac.onsuccess=_83(_aa);
 _ac.onfailure=_83(_ab);
 }else{
 _ac.onsuccess=_aa;
 _ac.onfailure=_ab;
 }
-_ac.open("GET",_a9.absoluteString(),_a8.async);
+_ac.open("GET",_a9.absoluteString(),_2.asyncLoader);
 _ac.send("");
 };
-_a8.async=YES;
+_2.asyncLoader=YES;
 var _ad={};
 CFHTTPRequest._cacheRequest=function(_ae,_af,_b0,_b1){
 _ae=typeof _ae==="string"?_ae:_ae.absoluteString();
@@ -2989,10 +2989,12 @@ return this._fileDependencyStatus===_2d5;
 var _2e0=0,_2e1=[],_2e2={};
 _289.prototype.loadFileDependencies=function(_2e3){
 var _2e4=this._fileDependencyStatus;
+if(_2e3){
 if(_2e4===_2d5){
 return _2e3();
 }
 this._fileDependencyCallbacks.push(_2e3);
+}
 if(_2e4===_2d3){
 if(_2e0){
 throw "Can't load";
