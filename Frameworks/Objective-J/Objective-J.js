@@ -2741,7 +2741,7 @@ this._dependencies.push(new _2bc(new CFURL(_2b9),_2bb));
 _286.prototype.method=function(_2bd,_2be){
 var _2bf=new _283(),_2c0,_2c1="",_2c2=[],_2c3=[null];
 _2be=_2be||{};
-while((_2c0=_2bd.skip_whitespace())&&_2c0!=_270){
+while((_2c0=_2bd.skip_whitespace())&&_2c0!==_270&&_2c0!==_26e){
 if(_2c0==_26a){
 var type="";
 _2c1+=_2c0;
@@ -2773,6 +2773,12 @@ throw new SyntaxError(this.error_message("*** Argument list expected after ','."
 _2c1+=_2c0;
 }
 }
+}
+}
+if(_2c0===_26e){
+_2c0=_2bd.skip_whitespace();
+if(_2c0!==_270){
+throw new SyntaxError(this.error_message("Invalid semi-colon in method declaration. "+"Semi-colons are allowed only to terminate the method signature, before the open brace."));
 }
 }
 var _2c4=0,_2c5=_2c2.length;
