@@ -1790,7 +1790,7 @@ function resolveURL(aURL)
                 resolvedPathComponents = basePathComponents.concat(pathComponents);
             if (!baseURL.hasDirectoryPath() && basePathComponents.length)
                 resolvedPathComponents.splice(basePathComponents.length - 1, 1);
-            if (pathComponents.length && pathComponents[0] === "..")
+            if (pathComponents.length && (pathComponents[0] === ".." || pathComponents[0] === "."))
                 standardizePathComponents(resolvedPathComponents, YES);
             resolvedParts.pathComponents = resolvedPathComponents;
             resolvedParts.path = pathFromPathComponents(resolvedPathComponents, pathComponents.length <= 0 || aURL.hasDirectoryPath());
@@ -1819,21 +1819,29 @@ function standardizePathComponents( pathComponents, inPlace)
     var index = 0,
         resultIndex = 0,
         count = pathComponents.length,
-        result = inPlace ? pathComponents : [];
+        result = inPlace ? pathComponents : [],
+        startsWithPeriod = NO;
     for (; index < count; ++index)
     {
         var component = pathComponents[index];
-        if (component === "" || component === ".")
+        if (component === "")
              continue;
+        if (component === ".")
+        {
+            startsWithPeriod = resultIndex === 0;
+            continue;
+        }
         if (component !== ".." || resultIndex === 0 || result[resultIndex - 1] === "..")
         {
-                result[resultIndex] = component;
+            result[resultIndex] = component;
             resultIndex++;
             continue;
         }
         if (resultIndex > 0 && result[resultIndex - 1] !== "/")
             --resultIndex;
     }
+    if (startsWithPeriod && resultIndex === 0)
+        result[resultIndex++] = ".";
     result.length = resultIndex;
     return result;
 }
@@ -1925,7 +1933,7 @@ CFURL.prototype.hasDirectoryPath = function()
         hasDirectoryPath = lastPathComponent === "." || lastPathComponent === "..";
         this._hasDirectoryPath = hasDirectoryPath;
     }
-    return this._hasDirectoryPath;
+    return hasDirectoryPath;
 }
 CFURL.prototype.hasDirectoryPath.displayName = "CFURL.prototype.hasDirectoryPath";
 CFURL.prototype.hostName = function()
@@ -2022,7 +2030,10 @@ CFURL.prototype.asDirectoryPathURL = function()
 {
     if (this.hasDirectoryPath())
         return this;
-    return new CFURL(this.lastPathComponent() + "/", this);
+    var lastPathComponent = this.lastPathComponent();
+    if (lastPathComponent !== "/")
+        lastPathComponent = "./" + lastPathComponent;
+    return new CFURL(lastPathComponent + "/", this);
 }
 CFURL.prototype.asDirectoryPathURL.displayName = "CFURL.prototype.asDirectoryPathURL";
 function CFURLGetResourcePropertiesForKeys( aURL)
@@ -2711,7 +2722,11 @@ StaticResource.resourceAtURL = function( aURL, resolveAsDirectoriesIfNecessary)
         if (hasOwnProperty.call(resource._children, name))
             resource = resource._children[name];
         else if (resolveAsDirectoriesIfNecessary)
+        {
+            if (name !== "/")
+                name = "./" + name;
             resource = new StaticResource(new CFURL(name, resource.URL()), resource, YES, YES);
+        }
         else
             throw new Error("Static Resource at " + aURL + " is not resolved (\"" + name + "\")");
     }
