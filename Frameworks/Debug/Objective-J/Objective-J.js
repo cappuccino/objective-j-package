@@ -542,6 +542,7 @@ function _CPLogInitPopup(logWindow)
         }
     }, false);
 }
+CPLogDefault = (typeof window === "object" && window.console) ? CPLogConsole : CPLogPopup;
 var undefined;
 if (typeof window !== "undefined")
 {
@@ -4220,6 +4221,7 @@ objj_eval = function( aString)
     return result;
 }
 exports.objj_eval = objj_eval;
+CPLogRegister(CPLogDefault);
 function objj_debug_object_format(aReceiver)
 {
     return (aReceiver && aReceiver.isa) ? exports.sprintf("<%s %#08x>", (((aReceiver.info & (CLS_META))) ? aReceiver : aReceiver.isa).name, aReceiver._UID) : String(aReceiver);

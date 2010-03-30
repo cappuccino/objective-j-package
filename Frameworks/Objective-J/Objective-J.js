@@ -468,6 +468,7 @@ CPLogDisable=!confirm("Click cancel to stop logging");
 }
 },false);
 };
+CPLogDefault=(typeof window==="object"&&window.console)?CPLogConsole:CPLogPopup;
 var _44;
 if(typeof window!=="undefined"){
 window.setNativeTimeout=window.setTimeout;
