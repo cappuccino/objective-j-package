@@ -2858,6 +2858,8 @@ var TOKEN_ACCESSORS = "accessors",
     TOKEN_SUPER = "super",
     TOKEN_VAR = "var",
     TOKEN_IN = "in",
+    TOKEN_PRAGMA = "pragma",
+    TOKEN_MARK = "mark",
     TOKEN_EQUAL = '=',
     TOKEN_PLUS = '+',
     TOKEN_MINUS = '-',
@@ -2873,6 +2875,7 @@ var TOKEN_ACCESSORS = "accessors",
     TOKEN_OPEN_BRACKET = '[',
     TOKEN_DOUBLE_QUOTE = '"',
     TOKEN_PREPROCESSOR = '@',
+    TOKEN_HASH = '#',
     TOKEN_CLOSE_BRACKET = ']',
     TOKEN_QUESTION_MARK = '?',
     TOKEN_OPEN_PARENTHESIS = '(',
@@ -3094,6 +3097,21 @@ Preprocessor.prototype.directive = function(tokens, aStringBuffer, allowedDirect
     if (!aStringBuffer)
         return buffer;
 }
+Preprocessor.prototype.hash = function(tokens, aStringBuffer)
+{
+    var buffer = aStringBuffer ? aStringBuffer : new StringBuffer(),
+        token = tokens.next();
+    if (token === TOKEN_PRAGMA)
+    {
+        token = tokens.skip_whitespace();
+        if (token === TOKEN_MARK)
+        {
+            while ((token = tokens.next()).indexOf("\n") < 0);
+        }
+    }
+    else
+        throw new SyntaxError(this.error_message("*** Expected \"pragma\" to follow # but instead saw \"" + token + "\"."));
+}
 Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
 {
     var buffer = aStringBuffer,
@@ -3223,6 +3241,10 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
             if (instance_methods.atoms.length !== 0)
                 instance_methods.atoms[instance_methods.atoms.length] = ", ";
             instance_methods.atoms[instance_methods.atoms.length] = this.method(tokens, ivar_names);
+        }
+        else if (token == TOKEN_HASH)
+        {
+            this.hash(tokens, buffer);
         }
         else if (token == TOKEN_PREPROCESSOR)
         {
@@ -3445,6 +3467,8 @@ Preprocessor.prototype.preprocess = function(tokens, aStringBuffer, terminator, 
         }
         else if (token == TOKEN_PREPROCESSOR)
             this.directive(tokens, buffer);
+        else if (token == TOKEN_HASH)
+            this.hash(tokens, buffer);
         else if (token == TOKEN_OPEN_BRACKET)
             this.brackets(tokens, buffer);
         else
