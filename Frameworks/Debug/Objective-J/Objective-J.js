@@ -769,10 +769,51 @@ CFHTTPRequest.prototype.overrideMimeType = function( aMimeType)
 }
 CFHTTPRequest.prototype.open = function( aMethod, aURL, isAsynchronous, aUser, aPassword)
 {
-    return this._nativeRequest.open(aMethod, aURL, isAsynchronous, aUser, aPassword);
+    aURL = makeAbsoluteURL(aURL);
+    if (aURL.isStorageURL())
+    {
+        this._URL = aURL;
+        this._method = aMethod;
+        this._isAsynchronous = isAsynchronous;
+        return;
+    }
+    else if (this._URL)
+    {
+        delete this._URL;
+        delete this._method;
+        delete this._isAsynchronous;
+    }
+    return this._nativeRequest.open(aMethod, aURL + "", isAsynchronous, aUser, aPassword);
+}
+function sendStorage( aRequest, aBody)
+{
+    var method = aRequest._method.toLowerCase();
+    if (method === "GET")
+    {
+        var item = localStorage.getItem(aRequest._URL);
+        if (item === undefined)
+            this._eventDispatcher.dispatchEvent({ type:"failure", request:aRequest });
+        else
+            this._eventDispatcher.dispatchEvent({ type:"success", request:aRequest });
+    }
+    else if (method === "POST" || method === "PUT")
+    {
+        try
+        {
+            localStorage.setItem(aRequest._URL, aBody);
+            this._eventDispatcher.dispatchEvent({ type:"success", request:aRequest });
+        }
+        catch (anException)
+        {
+            this._eventDispatcher.dispatchEvent({ type:"failure", request:aRequest });
+        }
+    }
+    this._eventDispatcher.dispatchEvent({ type:"failure", request:aRequest });
 }
 CFHTTPRequest.prototype.send = function( aBody)
 {
+    if (this._URL)
+        return sendStorage(this, aBody);
     try
     {
         return this._nativeRequest.send(aBody);
@@ -1919,6 +1960,21 @@ CFURL.prototype.authority = function()
     return baseURL && baseURL.authority() || "";
 }
 CFURL.prototype.authority.displayName = "CFURL.prototype.authority";
+CFURL.prototype.isStorageURL = function()
+{
+    return this.isLocalStorageURL() || this.isSessionStorageURL();
+}
+CFURL.prototype.isStorageURL.displayName = "CFURL.prototype.isStorageURL";
+CFURL.prototype.isLocalStorageURL = function()
+{
+    return this.scheme() === "storage.local";
+}
+CFURL.prototype.isLocalStorageURL.displayName = "CFURL.prototype.isLocalStorageURL";
+CFURL.prototype.isSessionStorageURL = function()
+{
+    return this.scheme() === "storage.session";
+}
+CFURL.prototype.isSessionStorageURL.displayName = "CFURL.prototype.isSessionStorageURL";
 CFURL.prototype.hasDirectoryPath = function()
 {
     var hasDirectoryPath = this._hasDirectoryPath;
@@ -2858,6 +2914,8 @@ var TOKEN_ACCESSORS = "accessors",
     TOKEN_SUPER = "super",
     TOKEN_VAR = "var",
     TOKEN_IN = "in",
+    TOKEN_PRAGMA = "pragma",
+    TOKEN_MARK = "mark",
     TOKEN_EQUAL = '=',
     TOKEN_PLUS = '+',
     TOKEN_MINUS = '-',
@@ -2873,6 +2931,7 @@ var TOKEN_ACCESSORS = "accessors",
     TOKEN_OPEN_BRACKET = '[',
     TOKEN_DOUBLE_QUOTE = '"',
     TOKEN_PREPROCESSOR = '@',
+    TOKEN_HASH = '#',
     TOKEN_CLOSE_BRACKET = ']',
     TOKEN_QUESTION_MARK = '?',
     TOKEN_OPEN_PARENTHESIS = '(',
@@ -2961,7 +3020,32 @@ var Preprocessor = function( aString, aURL, flags)
     this._flags = flags;
     this._classMethod = false;
     this._executable = NULL;
+    this._classLookupTable = {};
+    this._classVars = {};
+    var classObject = new objj_class();
+    for (var i in classObject)
+        this._classVars[i] = 1;
     this.preprocess(this._tokens, this._buffer);
+}
+Preprocessor.prototype.setClassInfo = function(className, superClassName, ivars)
+{
+    this._classLookupTable[className] = {superClassName:superClassName, ivars:ivars};
+}
+Preprocessor.prototype.getClassInfo = function(className)
+{
+    return this._classLookupTable[className];
+}
+Preprocessor.prototype.allIvarNamesForClassName = function(className)
+{
+    var names = {},
+        classInfo = this.getClassInfo(className);
+    while (classInfo)
+    {
+        for (var i in classInfo.ivars)
+            names[i] = 1;
+        classInfo = this.getClassInfo(classInfo.superClassName);
+    }
+    return names;
 }
 exports.Preprocessor = Preprocessor;
 Preprocessor.Flags = { };
@@ -3069,6 +3153,21 @@ Preprocessor.prototype.directive = function(tokens, aStringBuffer, allowedDirect
     if (!aStringBuffer)
         return buffer;
 }
+Preprocessor.prototype.hash = function(tokens, aStringBuffer)
+{
+    var buffer = aStringBuffer ? aStringBuffer : new StringBuffer(),
+        token = tokens.next();
+    if (token === TOKEN_PRAGMA)
+    {
+        token = tokens.skip_whitespace();
+        if (token === TOKEN_MARK)
+        {
+            while ((token = tokens.next()).indexOf("\n") < 0);
+        }
+    }
+    else
+        throw new SyntaxError(this.error_message("*** Expected \"pragma\" to follow # but instead saw \"" + token + "\"."));
+}
 Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
 {
     var buffer = aStringBuffer,
@@ -3108,7 +3207,8 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
         buffer.atoms[buffer.atoms.length] = "{var the_class = objj_allocateClassPair(" + superclass_name + ", \"" + class_name + "\"),\nmeta_class = the_class.isa;";
         if (token == TOKEN_OPEN_BRACE)
         {
-            var ivar_count = 0,
+            var ivar_names = {},
+                ivar_count = 0,
                 declaration = [],
                 attributes,
                 accessors = {};
@@ -3124,12 +3224,13 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                 }
                 else if (token == TOKEN_SEMICOLON)
                 {
-                    if (ivar_count++ == 0)
+                    if (ivar_count++ === 0)
                         buffer.atoms[buffer.atoms.length] = "class_addIvars(the_class, [";
                     else
                         buffer.atoms[buffer.atoms.length] = ", ";
                     var name = declaration[declaration.length - 1];
                     buffer.atoms[buffer.atoms.length] = "new objj_ivar(\"" + name + "\")";
+                    ivar_names[name] = 1;
                     declaration = [];
                     if (attributes)
                     {
@@ -3146,6 +3247,8 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                 buffer.atoms[buffer.atoms.length] = "]);\n";
             if (!token)
                 throw new SyntaxError(this.error_message("*** Expected '}'"));
+            this.setClassInfo(class_name, superclass_name === "Nil" ? null : superclass_name, ivar_names);
+            var ivar_names = this.allIvarNamesForClassName(class_name);
             for (ivar_name in accessors)
             {
                 var accessor = accessors[ivar_name],
@@ -3154,7 +3257,7 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                     getterCode = "(id)" + getterName + "\n{\nreturn " + ivar_name + ";\n}";
                 if (instance_methods.atoms.length !== 0)
                     instance_methods.atoms[instance_methods.atoms.length] = ",\n";
-                instance_methods.atoms[instance_methods.atoms.length] = this.method(new Lexer(getterCode));
+                instance_methods.atoms[instance_methods.atoms.length] = this.method(new Lexer(getterCode), ivar_names);
                 if (accessor["readonly"])
                     continue;
                 var setterName = accessor["setter"];
@@ -3170,13 +3273,15 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                     setterCode += ivar_name + " = newValue;\n}";
                 if (instance_methods.atoms.length !== 0)
                     instance_methods.atoms[instance_methods.atoms.length] = ",\n";
-                instance_methods.atoms[instance_methods.atoms.length] = this.method(new Lexer(setterCode));
+                instance_methods.atoms[instance_methods.atoms.length] = this.method(new Lexer(setterCode), ivar_names);
             }
         }
         else
             tokens.previous();
         buffer.atoms[buffer.atoms.length] = "objj_registerClassPair(the_class);\n";
     }
+    if (!ivar_names)
+        var ivar_names = this.allIvarNamesForClassName(class_name);
     while ((token = tokens.skip_whitespace()))
     {
         if (token == TOKEN_PLUS)
@@ -3184,14 +3289,18 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
             this._classMethod = true;
             if (class_methods.atoms.length !== 0)
                 class_methods.atoms[class_methods.atoms.length] = ", ";
-            class_methods.atoms[class_methods.atoms.length] = this.method(tokens);
+            class_methods.atoms[class_methods.atoms.length] = this.method(tokens, this._classVars);
         }
         else if (token == TOKEN_MINUS)
         {
             this._classMethod = false;
             if (instance_methods.atoms.length !== 0)
                 instance_methods.atoms[instance_methods.atoms.length] = ", ";
-            instance_methods.atoms[instance_methods.atoms.length] = this.method(tokens);
+            instance_methods.atoms[instance_methods.atoms.length] = this.method(tokens, ivar_names);
+        }
+        else if (token == TOKEN_HASH)
+        {
+            this.hash(tokens, buffer);
         }
         else if (token == TOKEN_PREPROCESSOR)
         {
@@ -3237,14 +3346,15 @@ Preprocessor.prototype._import = function(tokens)
     this._buffer.atoms[this._buffer.atoms.length] = isQuoted ? "\", YES);" : "\", NO);";
     this._dependencies.push(new FileDependency(new CFURL(URLString), isQuoted));
 }
-Preprocessor.prototype.method = function( tokens)
+Preprocessor.prototype.method = function( tokens, ivar_names)
 {
     var buffer = new StringBuffer(),
         token,
         selector = "",
         parameters = [],
         types = [null];
-    while((token = tokens.skip_whitespace()) && token != TOKEN_OPEN_BRACE)
+    ivar_names = ivar_names || {};
+    while((token = tokens.skip_whitespace()) && token !== TOKEN_OPEN_BRACE && token !== TOKEN_SEMICOLON)
     {
         if (token == TOKEN_COLON)
         {
@@ -3259,6 +3369,8 @@ Preprocessor.prototype.method = function( tokens)
             }
             types[parameters.length+1] = type || null;
             parameters[parameters.length] = token;
+            if (token in ivar_names)
+                throw new SyntaxError(this.error_message("*** Method ( "+selector+" ) uses a parameter name that is already in use ( "+token+" )"));
         }
         else if (token == TOKEN_OPEN_PARENTHESIS)
         {
@@ -3274,6 +3386,15 @@ Preprocessor.prototype.method = function( tokens)
         }
         else
             selector += token;
+    }
+    if (token === TOKEN_SEMICOLON)
+    {
+        token = tokens.skip_whitespace();
+        if (token !== TOKEN_OPEN_BRACE)
+        {
+            throw new SyntaxError(this.error_message("Invalid semi-colon in method declaration. "+
+            "Semi-colons are allowed only to terminate the method signature, before the open brace."));
+        }
     }
     var index = 0,
         count = parameters.length;
@@ -3402,6 +3523,8 @@ Preprocessor.prototype.preprocess = function(tokens, aStringBuffer, terminator, 
         }
         else if (token == TOKEN_PREPROCESSOR)
             this.directive(tokens, buffer);
+        else if (token == TOKEN_HASH)
+            this.hash(tokens, buffer);
         else if (token == TOKEN_OPEN_BRACKET)
             this.brackets(tokens, buffer);
         else
