@@ -686,13 +686,16 @@ if (!NativeRequest)
     NativeRequest = window.XMLHttpRequest;
 CFHTTPRequest = function()
 {
+    this._requestHeaders = {};
+    this._mimeType = null;
     this._eventDispatcher = new EventDispatcher(this);
     this._nativeRequest = new NativeRequest();
     var self = this;
-    this._nativeRequest.onreadystatechange = function()
+    this._stateChangeHandler = function()
     {
         determineAndDispatchHTTPRequestEvents(self);
     }
+    this._nativeRequest.onreadystatechange = this._stateChangeHandler;
     if (CFHTTPRequest.AuthenticationDelegate !== nil)
         this._eventDispatcher.addEventListener("HTTP403", function(){CFHTTPRequest.AuthenticationDelegate(self)});
 }
@@ -755,7 +758,7 @@ CFHTTPRequest.prototype.responseText = function()
 }
 CFHTTPRequest.prototype.setRequestHeader = function( aHeader, aValue)
 {
-    return this._nativeRequest.setRequestHeader(aHeader, aValue);
+    this._requestHeaders[aHeader] = aValue;
 }
 CFHTTPRequest.prototype.getResponseHeader = function( aHeader)
 {
@@ -767,15 +770,29 @@ CFHTTPRequest.prototype.getAllResponseHeaders = function()
 }
 CFHTTPRequest.prototype.overrideMimeType = function( aMimeType)
 {
-    if ("overrideMimeType" in this._nativeRequest)
-        return this._nativeRequest.overrideMimeType(aMimeType);
+    this._mimeType = aMimeType;
 }
 CFHTTPRequest.prototype.open = function( aMethod, aURL, isAsynchronous, aUser, aPassword)
 {
+    this._URL = aURL;
+    this._async = isAsynchronous;
+    this._method = aMethod;
+    this._user = aUser;
+    this._password = aPassword;
     return this._nativeRequest.open(aMethod, aURL, isAsynchronous, aUser, aPassword);
 }
 CFHTTPRequest.prototype.send = function( aBody)
 {
+    delete this._nativeRequest.onreadystatechange;
+    for (var i in this._requestHeaders)
+    {
+        if (this._requestHeaders.hasOwnProperty(i))
+            this._nativeRequest.setRequestHeader(i, this._requestHeaders[i]);
+    }
+    if (this._mimeType && "overrideMimeType" in this._nativeRequest)
+        this._nativeRequest.overrideMimeType(this._mimeType);
+    this._nativeRequest.open(this._method, this._URL, this._async, this._user, this._password);
+    this._nativeRequest.onreadystatechange = this._stateChangeHandler;
     try
     {
         return this._nativeRequest.send(aBody);
@@ -802,15 +819,17 @@ function determineAndDispatchHTTPRequestEvents( aRequest)
     var eventDispatcher = aRequest._eventDispatcher;
     eventDispatcher.dispatchEvent({ type:"readystatechange", request:aRequest});
     var nativeRequest = aRequest._nativeRequest,
-        readyState = ["uninitialized", "loading", "loaded", "interactive", "complete"][aRequest.readyState()];
-    eventDispatcher.dispatchEvent({ type:readyState, request:aRequest});
-    if (readyState === "complete")
+        readyStates = ["uninitialized", "loading", "loaded", "interactive", "complete"];
+    if (readyStates[aRequest.readyState()] === "complete")
     {
         var status = "HTTP" + aRequest.status();
         eventDispatcher.dispatchEvent({ type:status, request:aRequest });
         var result = aRequest.success() ? "success" : "failure";
         eventDispatcher.dispatchEvent({ type:result, request:aRequest });
+        eventDispatcher.dispatchEvent({ type:readyStates[aRequest.readyState()], request:aRequest});
     }
+    else
+        eventDispatcher.dispatchEvent({ type:readyStates[aRequest.readyState()], request:aRequest});
 }
 function FileRequest( aURL, onsuccess, onfailure)
 {

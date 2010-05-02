@@ -598,12 +598,15 @@ if(!_8a){
 _8a=window.XMLHttpRequest;
 }
 CFHTTPRequest=function(){
+this._requestHeaders={};
+this._mimeType=null;
 this._eventDispatcher=new _6c(this);
 this._nativeRequest=new _8a();
 var _8e=this;
-this._nativeRequest.onreadystatechange=function(){
+this._stateChangeHandler=function(){
 _a1(_8e);
 };
+this._nativeRequest.onreadystatechange=this._stateChangeHandler;
 if(CFHTTPRequest.AuthenticationDelegate!==nil){
 this._eventDispatcher.addEventListener("HTTP403",function(){
 CFHTTPRequest.AuthenticationDelegate(_8e);
@@ -660,7 +663,7 @@ CFHTTPRequest.prototype.responseText=function(){
 return this._nativeRequest.responseText;
 };
 CFHTTPRequest.prototype.setRequestHeader=function(_93,_94){
-return this._nativeRequest.setRequestHeader(_93,_94);
+this._requestHeaders[_93]=_94;
 };
 CFHTTPRequest.prototype.getResponseHeader=function(_95){
 return this._nativeRequest.getResponseHeader(_95);
@@ -669,14 +672,28 @@ CFHTTPRequest.prototype.getAllResponseHeaders=function(){
 return this._nativeRequest.getAllResponseHeaders();
 };
 CFHTTPRequest.prototype.overrideMimeType=function(_96){
-if("overrideMimeType" in this._nativeRequest){
-return this._nativeRequest.overrideMimeType(_96);
-}
+this._mimeType=_96;
 };
 CFHTTPRequest.prototype.open=function(_97,_98,_99,_9a,_9b){
+this._URL=_98;
+this._async=_99;
+this._method=_97;
+this._user=_9a;
+this._password=_9b;
 return this._nativeRequest.open(_97,_98,_99,_9a,_9b);
 };
 CFHTTPRequest.prototype.send=function(_9c){
+delete this._nativeRequest.onreadystatechange;
+for(var i in this._requestHeaders){
+if(this._requestHeaders.hasOwnProperty(i)){
+this._nativeRequest.setRequestHeader(i,this._requestHeaders[i]);
+}
+}
+if(this._mimeType&&"overrideMimeType" in this._nativeRequest){
+this._nativeRequest.overrideMimeType(this._mimeType);
+}
+this._nativeRequest.open(this._method,this._URL,this._async,this._user,this._password);
+this._nativeRequest.onreadystatechange=this._stateChangeHandler;
 try{
 return this._nativeRequest.send(_9c);
 }
@@ -696,13 +713,15 @@ this._eventDispatcher.removeEventListener(_9f,_a0);
 function _a1(_a2){
 var _a3=_a2._eventDispatcher;
 _a3.dispatchEvent({type:"readystatechange",request:_a2});
-var _a4=_a2._nativeRequest,_a5=["uninitialized","loading","loaded","interactive","complete"][_a2.readyState()];
-_a3.dispatchEvent({type:_a5,request:_a2});
-if(_a5==="complete"){
+var _a4=_a2._nativeRequest,_a5=["uninitialized","loading","loaded","interactive","complete"];
+if(_a5[_a2.readyState()]==="complete"){
 var _a6="HTTP"+_a2.status();
 _a3.dispatchEvent({type:_a6,request:_a2});
 var _a7=_a2.success()?"success":"failure";
 _a3.dispatchEvent({type:_a7,request:_a2});
+_a3.dispatchEvent({type:_a5[_a2.readyState()],request:_a2});
+}else{
+_a3.dispatchEvent({type:_a5[_a2.readyState()],request:_a2});
 }
 };
 function _a8(_a9,_aa,_ab){
