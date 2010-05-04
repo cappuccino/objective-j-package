@@ -598,6 +598,7 @@ if(!_8a){
 _8a=window.XMLHttpRequest;
 }
 CFHTTPRequest=function(){
+this._isOpen=false;
 this._requestHeaders={};
 this._mimeType=null;
 this._eventDispatcher=new _6c(this);
@@ -675,6 +676,7 @@ CFHTTPRequest.prototype.overrideMimeType=function(_96){
 this._mimeType=_96;
 };
 CFHTTPRequest.prototype.open=function(_97,_98,_99,_9a,_9b){
+this._isOpen=true;
 this._URL=_98;
 this._async=_99;
 this._method=_97;
@@ -683,17 +685,20 @@ this._password=_9b;
 return this._nativeRequest.open(_97,_98,_99,_9a,_9b);
 };
 CFHTTPRequest.prototype.send=function(_9c){
-delete this._nativeRequest.onreadystatechange;
 for(var i in this._requestHeaders){
 if(this._requestHeaders.hasOwnProperty(i)){
 this._nativeRequest.setRequestHeader(i,this._requestHeaders[i]);
 }
 }
+if(!this._isOpen){
+delete this._nativeRequest.onreadystatechange;
+this._nativeRequest.open(this._method,this._URL,this._async,this._user,this._password);
+this._nativeRequest.onreadystatechange=this._stateChangeHandler;
+}
 if(this._mimeType&&"overrideMimeType" in this._nativeRequest){
 this._nativeRequest.overrideMimeType(this._mimeType);
 }
-this._nativeRequest.open(this._method,this._URL,this._async,this._user,this._password);
-this._nativeRequest.onreadystatechange=this._stateChangeHandler;
+this._isOpen=false;
 try{
 return this._nativeRequest.send(_9c);
 }
@@ -702,6 +707,7 @@ this._eventDispatcher.dispatchEvent({type:"failure",request:this});
 }
 };
 CFHTTPRequest.prototype.abort=function(){
+this._isOpen=false;
 return this._nativeRequest.abort();
 };
 CFHTTPRequest.prototype.addEventListener=function(_9d,_9e){
