@@ -2486,16 +2486,16 @@ return _286;
 while((_285=_284.skip_whitespace())!=_26a){
 var name=_285,_287=true;
 if(!/^\w+$/.test(name)){
-throw new SyntaxError(this.error_message("*** @property attribute name not valid."));
+throw new SyntaxError(this.error_message("*** @accessors attribute name not valid."));
 }
 if((_285=_284.skip_whitespace())==_257){
 _287=_284.skip_whitespace();
 if(!/^\w+$/.test(_287)){
-throw new SyntaxError(this.error_message("*** @property attribute value not valid."));
+throw new SyntaxError(this.error_message("*** @accessors attribute value not valid."));
 }
 if(name=="setter"){
 if((_285=_284.next())!=_25a){
-throw new SyntaxError(this.error_message("*** @property setter attribute requires argument with \":\" at end of selector name."));
+throw new SyntaxError(this.error_message("*** @accessors setter attribute requires argument with \":\" at end of selector name."));
 }
 _287+=":";
 }
@@ -2506,7 +2506,7 @@ if(_285==_26a){
 break;
 }
 if(_285!=_25b){
-throw new SyntaxError(this.error_message("*** Expected ',' or ')' in @property attribute list."));
+throw new SyntaxError(this.error_message("*** Expected ',' or ')' in @accessors attribute list."));
 }
 }
 return _286;
@@ -3438,7 +3438,7 @@ _1ac(_35f,_2dd);
 };
 class_createInstance=function(_360){
 if(!_360){
-objj_exception_throw(new objj_exception(OBJJNilClassException,"*** Attempting to create object with Nil class."));
+throw new Error("*** Attempting to create object with Nil class.");
 }
 var _361=new _360.allocator();
 _361.isa=_360;
