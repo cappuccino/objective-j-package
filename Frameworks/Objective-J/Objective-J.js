@@ -2137,7 +2137,7 @@ var URL=new CFURL(text,_209),_20c=_207.getString();
 if(_20c.indexOf("mhtml:")===0){
 _20c="mhtml:"+new CFURL(_20c.substr("mhtml:".length),_209);
 if(_1e0===_1e3){
-var _20d=URLString.indexOf("!"),_20e=URLString.substring(0,_20d),_20f=URLString.substring(_20d);
+var _20d=_20c.indexOf("!"),_20e=_20c.substring(0,_20d),_20f=_20c.substring(_20d);
 _20c=_20e+"?"+_1a2+_20f;
 }
 }
