@@ -1127,7 +1127,7 @@ return _71.apply(this._buckets,[aKey]);
 CFDictionary.prototype.containsValue=function(_11d){
 var keys=this._keys,_11e=this._buckets,_8c=0,_11f=keys.length;
 for(;_8c<_11f;++_8c){
-if(_11e[keys]===_11d){
+if(_11e[keys[_8c]]===_11d){
 return YES;
 }
 }
@@ -1142,8 +1142,8 @@ return this.containsKey(aKey)?1:0;
 CFDictionary.prototype.countOfValue=function(_120){
 var keys=this._keys,_121=this._buckets,_8c=0,_122=keys.length,_123=0;
 for(;_8c<_122;++_8c){
-if(_121[keys]===_120){
-return ++_123;
+if(_121[keys[_8c]]===_120){
+++_123;
 }
 }
 return _123;
