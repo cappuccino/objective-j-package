@@ -1914,6 +1914,9 @@ return NULL;
 CFBundle.prototype.isLoading=function(){
 return this._loadStatus&_19f;
 };
+CFBundle.prototype.isLoaded=function(){
+return this._loadStatus&_1a3;
+};
 CFBundle.prototype.load=function(_1c1){
 if(this._loadStatus!==_19e){
 return;
