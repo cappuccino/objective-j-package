@@ -3958,7 +3958,7 @@ objj_class = function(displayName)
     this.method_hash = {};
     this.method_store = function() { };
     this.method_dtable = this.method_store.prototype;
-    this.allocator = eval("(function " + (displayName || "OBJJ_OBJECT").replace(/\W/g, "_") + "() { })");
+    eval("this.allocator = function " + (displayName || "OBJJ_OBJECT").replace(/\W/g, "_") + "() { }");
     this._UID = -1;
 }
 objj_class.displayName = "objj_class";
