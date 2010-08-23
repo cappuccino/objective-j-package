@@ -4075,6 +4075,11 @@ class_getClassMethod = function( aClass, aSelector)
     return method ? method : NULL;
 }
 class_getClassMethod.displayName = "class_getClassMethod";
+class_respondsToSelector = function( aClass, aSelector)
+{
+    return class_getClassMethod(aClass, aSelector) != NULL;
+}
+class_respondsToSelector.displayName = "class_respondsToSelector";
 class_copyMethodList = function( aClass)
 {
     return aClass.method_list.slice(0);
