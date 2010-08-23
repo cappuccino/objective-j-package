@@ -1977,7 +1977,7 @@ _1ca(_1cf,_1d5||new Error("Could not recognize executable code format in Bundle 
 };
 function _1d3(){
 if((typeof CPApp==="undefined"||!CPApp||!CPApp._finishedLaunching)&&typeof OBJJ_PROGRESS_CALLBACK==="function"&&_1a8){
-OBJJ_PROGRESS_CALLBACK(MAX(MIN(1,_1a7/_1a8),0),_1a8,_1cf.path());
+OBJJ_PROGRESS_CALLBACK(MAX(MIN(1,_1a7/_1a8),0),_1a8,_1cf.bundlePath());
 }
 if(_1cf._loadStatus===_19f){
 _1cf._loadStatus=_1a3;
