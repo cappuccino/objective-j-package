@@ -2956,7 +2956,7 @@ Lexer.prototype.pop = function()
 {
     this._index = this._context.pop();
 }
-Lexer.prototype.peak = function(shouldSkipWhitespace)
+Lexer.prototype.peek = function(shouldSkipWhitespace)
 {
     if (shouldSkipWhitespace)
     {
@@ -2981,13 +2981,13 @@ Lexer.prototype.last = function()
         return NULL;
     return this._tokens[this._index - 1];
 }
-Lexer.prototype.skip_whitespace= function(shouldMoveBackwards)
+Lexer.prototype.skip_whitespace = function(shouldMoveBackwards)
 {
     var token;
     if (shouldMoveBackwards)
-        while((token = this.previous()) && TOKEN_WHITESPACE.test(token)) ;
+        while ((token = this.previous()) && TOKEN_WHITESPACE.test(token)) ;
     else
-        while((token = this.next()) && TOKEN_WHITESPACE.test(token)) ;
+        while ((token = this.next()) && TOKEN_WHITESPACE.test(token)) ;
     return token;
 }
 exports.Lexer = Lexer;
@@ -3031,7 +3031,7 @@ var Preprocessor = function( aString, aURL, flags)
 }
 Preprocessor.prototype.setClassInfo = function(className, superClassName, ivars)
 {
-    this._classLookupTable[className] = {superClassName:superClassName, ivars:ivars};
+    this._classLookupTable[className] = { superClassName:superClassName, ivars:ivars };
 }
 Preprocessor.prototype.getClassInfo = function(className)
 {
@@ -3125,7 +3125,7 @@ Preprocessor.prototype.brackets = function( tokens, aStringBuffer)
         for(; index < count; ++index)
         {
             var pair = tuples[index];
-            selector.atoms[selector.atoms.length] = pair[1]
+            selector.atoms[selector.atoms.length] = pair[1];
             marg_list.atoms[marg_list.atoms.length] = ", " + pair[0];
         }
         aStringBuffer.atoms[aStringBuffer.atoms.length] = ", \"";
@@ -3185,7 +3185,7 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
     this._currentSuperMetaClass = "objj_getMetaClass(\"" + class_name + "\").super_class";
     this._currentClass = class_name;
     this._currentSelector = "";
-    if((token = tokens.skip_whitespace()) == TOKEN_OPEN_PARENTHESIS)
+    if ((token = tokens.skip_whitespace()) == TOKEN_OPEN_PARENTHESIS)
     {
         token = tokens.skip_whitespace();
         if (token == TOKEN_CLOSE_PARENTHESIS)
@@ -3334,9 +3334,9 @@ Preprocessor.prototype._import = function(tokens)
         isQuoted = (token !== TOKEN_LESS_THAN);
     if (token === TOKEN_LESS_THAN)
     {
-        while((token = tokens.next()) && token !== TOKEN_GREATER_THAN)
+        while ((token = tokens.next()) && token !== TOKEN_GREATER_THAN)
             URLString += token;
-        if(!token)
+        if (!token)
             throw new SyntaxError(this.error_message("*** Unterminated import statement."));
     }
     else if (token.charAt(0) === TOKEN_DOUBLE_QUOTE)
@@ -3356,7 +3356,7 @@ Preprocessor.prototype.method = function( tokens, ivar_names)
         parameters = [],
         types = [null];
     ivar_names = ivar_names || {};
-    while((token = tokens.skip_whitespace()) && token !== TOKEN_OPEN_BRACE && token !== TOKEN_SEMICOLON)
+    while ((token = tokens.skip_whitespace()) && token !== TOKEN_OPEN_BRACE && token !== TOKEN_SEMICOLON)
     {
         if (token == TOKEN_COLON)
         {
@@ -3365,11 +3365,11 @@ Preprocessor.prototype.method = function( tokens, ivar_names)
             token = tokens.skip_whitespace();
             if (token == TOKEN_OPEN_PARENTHESIS)
             {
-                while((token = tokens.skip_whitespace()) && token != TOKEN_CLOSE_PARENTHESIS)
+                while ((token = tokens.skip_whitespace()) && token != TOKEN_CLOSE_PARENTHESIS)
                     type += token;
                 token = tokens.skip_whitespace();
             }
-            types[parameters.length+1] = type || null;
+            types[parameters.length + 1] = type || null;
             parameters[parameters.length] = token;
             if (token in ivar_names)
                 throw new SyntaxError(this.error_message("*** Method ( "+selector+" ) uses a parameter name that is already in use ( "+token+" )"));
@@ -3377,7 +3377,7 @@ Preprocessor.prototype.method = function( tokens, ivar_names)
         else if (token == TOKEN_OPEN_PARENTHESIS)
         {
             var type = "";
-            while((token = tokens.skip_whitespace()) && token != TOKEN_CLOSE_PARENTHESIS)
+            while ((token = tokens.skip_whitespace()) && token != TOKEN_CLOSE_PARENTHESIS)
                 type += token;
             types[0] = type || null;
         }
@@ -3407,7 +3407,7 @@ Preprocessor.prototype.method = function( tokens, ivar_names)
     if (this._flags & Preprocessor.Flags.IncludeDebugSymbols)
         buffer.atoms[buffer.atoms.length] = " $" + this._currentClass + "__" + selector.replace(/:/g, "_");
     buffer.atoms[buffer.atoms.length] = "(self, _cmd";
-    for(; index < count; ++index)
+    for (; index < count; ++index)
     {
         buffer.atoms[buffer.atoms.length] = ", ";
         buffer.atoms[buffer.atoms.length] = parameters[index];
@@ -3508,7 +3508,7 @@ Preprocessor.prototype.preprocess = function(tokens, aStringBuffer, terminator, 
         if (token === TOKEN_FUNCTION)
         {
             var accumulator = "";
-            while((token = tokens.next()) && token !== TOKEN_OPEN_PARENTHESIS && !(/^\w/).test(token))
+            while ((token = tokens.next()) && token !== TOKEN_OPEN_PARENTHESIS && !(/^\w/).test(token))
                 accumulator += token;
             if (token === TOKEN_OPEN_PARENTHESIS)
             {

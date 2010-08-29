@@ -2410,7 +2410,7 @@ this._context.push(this._index);
 _272.prototype.pop=function(){
 this._index=this._context.pop();
 };
-_272.prototype.peak=function(_274){
+_272.prototype.peek=function(_274){
 if(_274){
 this.push();
 var _275=this.skip_whitespace();
