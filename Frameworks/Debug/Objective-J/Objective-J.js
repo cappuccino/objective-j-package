@@ -352,31 +352,34 @@ var _CPLogLevelsInverted = {};
 for (var i = 0; i < CPLogLevels.length; i++)
     _CPLogLevelsInverted[CPLogLevels[i]] = i;
 var _CPLogRegistrations = {};
-CPLogRegister = function(aProvider, aMaxLevel)
+CPLogRegister = function(aProvider, aMaxLevel, aFormatter)
 {
-    CPLogRegisterRange(aProvider, CPLogLevels[0], aMaxLevel || CPLogLevels[CPLogLevels.length-1]);
+    CPLogRegisterRange(aProvider, CPLogLevels[0], aMaxLevel || CPLogLevels[CPLogLevels.length-1], aFormatter);
 }
-CPLogRegisterRange = function(aProvider, aMinLevel, aMaxLevel)
+CPLogRegisterRange = function(aProvider, aMinLevel, aMaxLevel, aFormatter)
 {
     var min = _CPLogLevelsInverted[aMinLevel];
     var max = _CPLogLevelsInverted[aMaxLevel];
-    if (min !== undefined && max !== undefined)
-        for (var i = 0; i <= max; i++)
-            CPLogRegisterSingle(aProvider, CPLogLevels[i]);
+    if (min !== undefined && max !== undefined && min <= max)
+        for (var i = min; i <= max; i++)
+            CPLogRegisterSingle(aProvider, CPLogLevels[i], aFormatter);
 }
-CPLogRegisterSingle = function(aProvider, aLevel)
+CPLogRegisterSingle = function(aProvider, aLevel, aFormatter)
 {
     if (!_CPLogRegistrations[aLevel])
         _CPLogRegistrations[aLevel] = [];
     for (var i = 0; i < _CPLogRegistrations[aLevel].length; i++)
-        if (_CPLogRegistrations[aLevel][i] === aProvider)
+        if (_CPLogRegistrations[aLevel][i][0] === aProvider)
+        {
+            _CPLogRegistrations[aLevel][i][1] = aFormatter;
             return;
-    _CPLogRegistrations[aLevel].push(aProvider);
+        }
+    _CPLogRegistrations[aLevel].push([aProvider, aFormatter]);
 }
 CPLogUnregister = function(aProvider) {
     for (var aLevel in _CPLogRegistrations)
         for (var i = 0; i < _CPLogRegistrations[aLevel].length; i++)
-            if (_CPLogRegistrations[aLevel][i] === aProvider)
+            if (_CPLogRegistrations[aLevel][i][0] === aProvider)
                 _CPLogRegistrations[aLevel].splice(i--, 1);
 }
 function _CPLogDispatch(parameters, aLevel, aTitle)
@@ -388,7 +391,10 @@ function _CPLogDispatch(parameters, aLevel, aTitle)
     var message = (typeof parameters[0] == "string" && parameters.length > 1) ? exports.sprintf.apply(null, parameters) : String(parameters[0]);
     if (_CPLogRegistrations[aLevel])
         for (var i = 0; i < _CPLogRegistrations[aLevel].length; i++)
-             _CPLogRegistrations[aLevel][i](message, aLevel, aTitle);
+        {
+            var logger = _CPLogRegistrations[aLevel][i];
+            logger[0](message, aLevel, aTitle, logger[1]);
+        }
 }
 CPLog = function() { _CPLogDispatch(arguments); }
 for (var i = 0; i < CPLogLevels.length; i++)
@@ -396,7 +402,7 @@ for (var i = 0; i < CPLogLevels.length; i++)
 var _CPFormatLogMessage = function(aString, aLevel, aTitle)
 {
     var now = new Date();
-    aLevel = ( aLevel == null ? '' : ' [' + aLevel + ']' );
+    aLevel = ( aLevel == null ? '' : ' [' + CPLogColorize(aLevel, aLevel) + ']' );
     if (typeof exports.sprintf == "function")
         return exports.sprintf("%4d-%02d-%02d %02d:%02d:%02d.%03d %s%s: %s",
             now.getFullYear(), now.getMonth() + 1, now.getDate(),
@@ -405,11 +411,11 @@ var _CPFormatLogMessage = function(aString, aLevel, aTitle)
     else
         return now + " " + aTitle + aLevel + ": " + aString;
 }
-CPLogConsole = function(aString, aLevel, aTitle)
+CPLogConsole = function(aString, aLevel, aTitle, aFormatter)
 {
     if (typeof console != "undefined")
     {
-        var message = _CPFormatLogMessage(aString, aLevel, aTitle);
+        var message = (aFormatter || _CPFormatLogMessage)(aString, aLevel, aTitle);
         var logger = {
             "fatal": "error",
             "error": "error",
@@ -424,16 +430,20 @@ CPLogConsole = function(aString, aLevel, aTitle)
             console.log(message);
     }
 }
-CPLogAlert = function(aString, aLevel, aTitle)
+CPLogColorize = function(aString, aLevel)
+{
+    return aString;
+}
+CPLogAlert = function(aString, aLevel, aTitle, aFormatter)
 {
     if (typeof alert != "undefined" && !CPLogDisable)
     {
-        var message = _CPFormatLogMessage(aString, aLevel, aTitle);
+        var message = (aFormatter || _CPFormatLogMessage)(aString, aLevel, aTitle);
         CPLogDisable = !confirm(message + "\n\n(Click cancel to stop log alerts)");
     }
 }
 var CPLogWindow = null;
-CPLogPopup = function(aString, aLevel, aTitle)
+CPLogPopup = function(aString, aLevel, aTitle, aFormatter)
 {
     try {
         if (CPLogDisable || window.open == undefined)
@@ -449,7 +459,7 @@ CPLogPopup = function(aString, aLevel, aTitle)
         }
         var logDiv = CPLogWindow.document.createElement("div");
         logDiv.setAttribute("class", aLevel || "fatal");
-        var message = _CPFormatLogMessage(aString, null, aTitle);
+        var message = (aFormatter || _CPFormatLogMessage)(aString, aFormatter ? aLevel : null, aTitle);
         logDiv.appendChild(CPLogWindow.document.createTextNode(message));
         CPLogWindow.log.appendChild(logDiv);
         if (CPLogWindow.focusEnabled.checked)
