@@ -399,7 +399,7 @@ var _CPFormatLogMessage = function(aString, aLevel, aTitle)
     aLevel = ( aLevel == null ? '' : ' [' + aLevel + ']' );
     if (typeof exports.sprintf == "function")
         return exports.sprintf("%4d-%02d-%02d %02d:%02d:%02d.%03d %s%s: %s",
-            now.getFullYear(), now.getMonth(), now.getDate(),
+            now.getFullYear(), now.getMonth() + 1, now.getDate(),
             now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds(),
             aTitle, aLevel, aString);
     else
@@ -686,19 +686,26 @@ if (!NativeRequest)
     NativeRequest = window.XMLHttpRequest;
 CFHTTPRequest = function()
 {
+    this._isOpen = false;
+    this._requestHeaders = {};
+    this._mimeType = null;
     this._eventDispatcher = new EventDispatcher(this);
     this._nativeRequest = new NativeRequest();
     var self = this;
-    this._nativeRequest.onreadystatechange = function()
+    this._stateChangeHandler = function()
     {
         determineAndDispatchHTTPRequestEvents(self);
     }
+    this._nativeRequest.onreadystatechange = this._stateChangeHandler;
+    if (CFHTTPRequest.AuthenticationDelegate !== nil)
+        this._eventDispatcher.addEventListener("HTTP403", function(){CFHTTPRequest.AuthenticationDelegate(self)});
 }
 CFHTTPRequest.UninitializedState = 0;
 CFHTTPRequest.LoadingState = 1;
 CFHTTPRequest.LoadedState = 2;
 CFHTTPRequest.InteractiveState = 3;
 CFHTTPRequest.CompleteState = 4;
+CFHTTPRequest.AuthenticationDelegate = nil;
 CFHTTPRequest.prototype.status = function()
 {
     try
@@ -752,7 +759,7 @@ CFHTTPRequest.prototype.responseText = function()
 }
 CFHTTPRequest.prototype.setRequestHeader = function( aHeader, aValue)
 {
-    return this._nativeRequest.setRequestHeader(aHeader, aValue);
+    this._requestHeaders[aHeader] = aValue;
 }
 CFHTTPRequest.prototype.getResponseHeader = function( aHeader)
 {
@@ -764,15 +771,34 @@ CFHTTPRequest.prototype.getAllResponseHeaders = function()
 }
 CFHTTPRequest.prototype.overrideMimeType = function( aMimeType)
 {
-    if ("overrideMimeType" in this._nativeRequest)
-        return this._nativeRequest.overrideMimeType(aMimeType);
+    this._mimeType = aMimeType;
 }
 CFHTTPRequest.prototype.open = function( aMethod, aURL, isAsynchronous, aUser, aPassword)
 {
+    this._isOpen = true;
+    this._URL = aURL;
+    this._async = isAsynchronous;
+    this._method = aMethod;
+    this._user = aUser;
+    this._password = aPassword;
     return this._nativeRequest.open(aMethod, aURL, isAsynchronous, aUser, aPassword);
 }
 CFHTTPRequest.prototype.send = function( aBody)
 {
+    if (!this._isOpen)
+    {
+        delete this._nativeRequest.onreadystatechange;
+        this._nativeRequest.open(this._method, this._URL, this._async, this._user, this._password);
+        this._nativeRequest.onreadystatechange = this._stateChangeHandler;
+    }
+    for (var i in this._requestHeaders)
+    {
+        if (this._requestHeaders.hasOwnProperty(i))
+            this._nativeRequest.setRequestHeader(i, this._requestHeaders[i]);
+    }
+    if (this._mimeType && "overrideMimeType" in this._nativeRequest)
+        this._nativeRequest.overrideMimeType(this._mimeType);
+    this._isOpen = false;
     try
     {
         return this._nativeRequest.send(aBody);
@@ -784,6 +810,7 @@ CFHTTPRequest.prototype.send = function( aBody)
 }
 CFHTTPRequest.prototype.abort = function()
 {
+    this._isOpen = false;
     return this._nativeRequest.abort();
 }
 CFHTTPRequest.prototype.addEventListener = function( anEventName, anEventListener)
@@ -799,15 +826,17 @@ function determineAndDispatchHTTPRequestEvents( aRequest)
     var eventDispatcher = aRequest._eventDispatcher;
     eventDispatcher.dispatchEvent({ type:"readystatechange", request:aRequest});
     var nativeRequest = aRequest._nativeRequest,
-        readyState = ["uninitialized", "loading", "loaded", "interactive", "complete"][aRequest.readyState()];
-    eventDispatcher.dispatchEvent({ type:readyState, request:aRequest});
-    if (readyState === "complete")
+        readyStates = ["uninitialized", "loading", "loaded", "interactive", "complete"];
+    if (readyStates[aRequest.readyState()] === "complete")
     {
         var status = "HTTP" + aRequest.status();
         eventDispatcher.dispatchEvent({ type:status, request:aRequest });
         var result = aRequest.success() ? "success" : "failure";
         eventDispatcher.dispatchEvent({ type:result, request:aRequest });
+        eventDispatcher.dispatchEvent({ type:readyStates[aRequest.readyState()], request:aRequest});
     }
+    else
+        eventDispatcher.dispatchEvent({ type:readyStates[aRequest.readyState()], request:aRequest});
 }
 function FileRequest( aURL, onsuccess, onfailure)
 {
@@ -1192,7 +1221,10 @@ CFPropertyList.propertyListFromXML = function( aStringOrXMLNode)
                                         break;
             case PLIST_NUMBER_INTEGER: object = parseInt(((String((XMLNode.firstChild).nodeValue))), 10);
                                         break;
-            case PLIST_STRING: object = decodeHTMLComponent((XMLNode.firstChild) ? ((String((XMLNode.firstChild).nodeValue))) : "");
+            case PLIST_STRING: if ((XMLNode.getAttribute("type") === "base64"))
+                                            object = (XMLNode.firstChild) ? CFData.decodeBase64ToString(((String((XMLNode.firstChild).nodeValue)))) : "";
+                                        else
+                                            object = decodeHTMLComponent((XMLNode.firstChild) ? ((String((XMLNode.firstChild).nodeValue))) : "");
                                         break;
             case PLIST_BOOLEAN_TRUE: object = YES;
                                         break;
@@ -1287,7 +1319,7 @@ CFDictionary.prototype.containsValue = function( anObject)
         index = 0,
         count = keys.length;
     for (; index < count; ++index)
-        if (buckets[keys] === anObject)
+        if (buckets[keys[index]] === anObject)
             return YES;
     return NO;
 }
@@ -1310,8 +1342,8 @@ CFDictionary.prototype.countOfValue = function( anObject)
         count = keys.length,
         countOfValue = 0;
     for (; index < count; ++index)
-        if (buckets[keys] === anObject)
-            return ++countOfValue;
+        if (buckets[keys[index]] === anObject)
+            ++countOfValue;
     return countOfValue;
 }
 CFDictionary.prototype.countOfValue.displayName = "CFDictionary.prototype.countOfValue";
@@ -1561,6 +1593,10 @@ CFData.decodeBase64ToString = function(input, strip)
 {
     return CFData.bytesToString(CFData.decodeBase64ToArray(input, strip));
 }
+CFData.decodeBase64ToUtf16String = function(input, strip)
+{
+    return CFData.bytesToUtf16String(CFData.decodeBase64ToArray(input, strip));
+}
 CFData.bytesToString = function(bytes)
 {
     return String.fromCharCode.apply(NULL, bytes);
@@ -1570,6 +1606,24 @@ CFData.encodeBase64String = function(input)
     var temp = [];
     for (var i = 0; i < input.length; i++)
         temp.push(input.charCodeAt(i));
+    return CFData.encodeBase64Array(temp);
+}
+CFData.bytesToUtf16String = function(bytes)
+{
+    var temp = [];
+    for (var i = 0; i < bytes.length; i+=2)
+        temp.push(bytes[i+1] << 8 | bytes[i]);
+    return String.fromCharCode.apply(NULL, temp);
+}
+CFData.encodeBase64Utf16String = function(input)
+{
+    var temp = [];
+    for (var i = 0; i < input.length; i++)
+    {
+        var c = input.charCodeAt(i);
+        temp.push(input.charCodeAt(i) & 0xFF);
+        temp.push((input.charCodeAt(i) & 0xFF00) >> 8);
+    }
     return CFData.encodeBase64Array(temp);
 }
 var CFURLsForCachedUIDs,
@@ -2262,6 +2316,10 @@ CFBundle.prototype.isLoading = function()
 {
     return this._loadStatus & CFBundleLoading;
 }
+CFBundle.prototype.isLoaded = function()
+{
+    return this._loadStatus & CFBundleLoaded;
+}
 CFBundle.prototype.isLoading.displayName = "CFBundle.prototype.isLoading";
 CFBundle.prototype.load = function( shouldExecute)
 {
@@ -2571,9 +2629,9 @@ function decompileStaticFile( aBundle, aString, aPath)
                 mappedURLString = "mhtml:" + new CFURL(mappedURLString.substr("mhtml:".length), bundleURL);
                 if (CFBundleSupportedSpriteType === CFBundleMHTMLUncachedSpriteType)
                 {
-                    var exclamationIndex = URLString.indexOf("!"),
-                        firstPart = URLString.substring(0, exclamationIndex),
-                        lastPart = URLString.substring(exclamationIndex);
+                    var exclamationIndex = mappedURLString.indexOf("!"),
+                        firstPart = mappedURLString.substring(0, exclamationIndex),
+                        lastPart = mappedURLString.substring(exclamationIndex);
                     mappedURLString = firstPart + "?" + CFCacheBuster + lastPart;
                 }
             }
@@ -2858,6 +2916,8 @@ var TOKEN_ACCESSORS = "accessors",
     TOKEN_SUPER = "super",
     TOKEN_VAR = "var",
     TOKEN_IN = "in",
+    TOKEN_PRAGMA = "pragma",
+    TOKEN_MARK = "mark",
     TOKEN_EQUAL = '=',
     TOKEN_PLUS = '+',
     TOKEN_MINUS = '-',
@@ -2873,6 +2933,7 @@ var TOKEN_ACCESSORS = "accessors",
     TOKEN_OPEN_BRACKET = '[',
     TOKEN_DOUBLE_QUOTE = '"',
     TOKEN_PREPROCESSOR = '@',
+    TOKEN_HASH = '#',
     TOKEN_CLOSE_BRACKET = ']',
     TOKEN_QUESTION_MARK = '?',
     TOKEN_OPEN_PARENTHESIS = '(',
@@ -2961,7 +3022,32 @@ var Preprocessor = function( aString, aURL, flags)
     this._flags = flags;
     this._classMethod = false;
     this._executable = NULL;
+    this._classLookupTable = {};
+    this._classVars = {};
+    var classObject = new objj_class();
+    for (var i in classObject)
+        this._classVars[i] = 1;
     this.preprocess(this._tokens, this._buffer);
+}
+Preprocessor.prototype.setClassInfo = function(className, superClassName, ivars)
+{
+    this._classLookupTable[className] = {superClassName:superClassName, ivars:ivars};
+}
+Preprocessor.prototype.getClassInfo = function(className)
+{
+    return this._classLookupTable[className];
+}
+Preprocessor.prototype.allIvarNamesForClassName = function(className)
+{
+    var names = {},
+        classInfo = this.getClassInfo(className);
+    while (classInfo)
+    {
+        for (var i in classInfo.ivars)
+            names[i] = 1;
+        classInfo = this.getClassInfo(classInfo.superClassName);
+    }
+    return names;
 }
 exports.Preprocessor = Preprocessor;
 Preprocessor.Flags = { };
@@ -2987,16 +3073,16 @@ Preprocessor.prototype.accessors = function(tokens)
         var name = token,
             value = true;
         if (!/^\w+$/.test(name))
-            throw new SyntaxError(this.error_message("*** @property attribute name not valid."));
+            throw new SyntaxError(this.error_message("*** @accessors attribute name not valid."));
         if ((token = tokens.skip_whitespace()) == TOKEN_EQUAL)
         {
             value = tokens.skip_whitespace();
             if (!/^\w+$/.test(value))
-                throw new SyntaxError(this.error_message("*** @property attribute value not valid."));
+                throw new SyntaxError(this.error_message("*** @accessors attribute value not valid."));
             if (name == "setter")
             {
                 if ((token = tokens.next()) != TOKEN_COLON)
-                    throw new SyntaxError(this.error_message("*** @property setter attribute requires argument with \":\" at end of selector name."));
+                    throw new SyntaxError(this.error_message("*** @accessors setter attribute requires argument with \":\" at end of selector name."));
                 value += ":";
             }
             token = tokens.skip_whitespace();
@@ -3005,7 +3091,7 @@ Preprocessor.prototype.accessors = function(tokens)
         if (token == TOKEN_CLOSE_PARENTHESIS)
             break;
         if (token != TOKEN_COMMA)
-            throw new SyntaxError(this.error_message("*** Expected ',' or ')' in @property attribute list."));
+            throw new SyntaxError(this.error_message("*** Expected ',' or ')' in @accessors attribute list."));
     }
     return attributes;
 }
@@ -3069,6 +3155,21 @@ Preprocessor.prototype.directive = function(tokens, aStringBuffer, allowedDirect
     if (!aStringBuffer)
         return buffer;
 }
+Preprocessor.prototype.hash = function(tokens, aStringBuffer)
+{
+    var buffer = aStringBuffer ? aStringBuffer : new StringBuffer(),
+        token = tokens.next();
+    if (token === TOKEN_PRAGMA)
+    {
+        token = tokens.skip_whitespace();
+        if (token === TOKEN_MARK)
+        {
+            while ((token = tokens.next()).indexOf("\n") < 0);
+        }
+    }
+    else
+        throw new SyntaxError(this.error_message("*** Expected \"pragma\" to follow # but instead saw \"" + token + "\"."));
+}
 Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
 {
     var buffer = aStringBuffer,
@@ -3108,7 +3209,8 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
         buffer.atoms[buffer.atoms.length] = "{var the_class = objj_allocateClassPair(" + superclass_name + ", \"" + class_name + "\"),\nmeta_class = the_class.isa;";
         if (token == TOKEN_OPEN_BRACE)
         {
-            var ivar_count = 0,
+            var ivar_names = {},
+                ivar_count = 0,
                 declaration = [],
                 attributes,
                 accessors = {};
@@ -3124,12 +3226,13 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                 }
                 else if (token == TOKEN_SEMICOLON)
                 {
-                    if (ivar_count++ == 0)
+                    if (ivar_count++ === 0)
                         buffer.atoms[buffer.atoms.length] = "class_addIvars(the_class, [";
                     else
                         buffer.atoms[buffer.atoms.length] = ", ";
                     var name = declaration[declaration.length - 1];
                     buffer.atoms[buffer.atoms.length] = "new objj_ivar(\"" + name + "\")";
+                    ivar_names[name] = 1;
                     declaration = [];
                     if (attributes)
                     {
@@ -3146,6 +3249,8 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                 buffer.atoms[buffer.atoms.length] = "]);\n";
             if (!token)
                 throw new SyntaxError(this.error_message("*** Expected '}'"));
+            this.setClassInfo(class_name, superclass_name === "Nil" ? null : superclass_name, ivar_names);
+            var ivar_names = this.allIvarNamesForClassName(class_name);
             for (ivar_name in accessors)
             {
                 var accessor = accessors[ivar_name],
@@ -3154,7 +3259,7 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                     getterCode = "(id)" + getterName + "\n{\nreturn " + ivar_name + ";\n}";
                 if (instance_methods.atoms.length !== 0)
                     instance_methods.atoms[instance_methods.atoms.length] = ",\n";
-                instance_methods.atoms[instance_methods.atoms.length] = this.method(new Lexer(getterCode));
+                instance_methods.atoms[instance_methods.atoms.length] = this.method(new Lexer(getterCode), ivar_names);
                 if (accessor["readonly"])
                     continue;
                 var setterName = accessor["setter"];
@@ -3170,13 +3275,15 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                     setterCode += ivar_name + " = newValue;\n}";
                 if (instance_methods.atoms.length !== 0)
                     instance_methods.atoms[instance_methods.atoms.length] = ",\n";
-                instance_methods.atoms[instance_methods.atoms.length] = this.method(new Lexer(setterCode));
+                instance_methods.atoms[instance_methods.atoms.length] = this.method(new Lexer(setterCode), ivar_names);
             }
         }
         else
             tokens.previous();
         buffer.atoms[buffer.atoms.length] = "objj_registerClassPair(the_class);\n";
     }
+    if (!ivar_names)
+        var ivar_names = this.allIvarNamesForClassName(class_name);
     while ((token = tokens.skip_whitespace()))
     {
         if (token == TOKEN_PLUS)
@@ -3184,14 +3291,18 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
             this._classMethod = true;
             if (class_methods.atoms.length !== 0)
                 class_methods.atoms[class_methods.atoms.length] = ", ";
-            class_methods.atoms[class_methods.atoms.length] = this.method(tokens);
+            class_methods.atoms[class_methods.atoms.length] = this.method(tokens, this._classVars);
         }
         else if (token == TOKEN_MINUS)
         {
             this._classMethod = false;
             if (instance_methods.atoms.length !== 0)
                 instance_methods.atoms[instance_methods.atoms.length] = ", ";
-            instance_methods.atoms[instance_methods.atoms.length] = this.method(tokens);
+            instance_methods.atoms[instance_methods.atoms.length] = this.method(tokens, ivar_names);
+        }
+        else if (token == TOKEN_HASH)
+        {
+            this.hash(tokens, buffer);
         }
         else if (token == TOKEN_PREPROCESSOR)
         {
@@ -3237,14 +3348,15 @@ Preprocessor.prototype._import = function(tokens)
     this._buffer.atoms[this._buffer.atoms.length] = isQuoted ? "\", YES);" : "\", NO);";
     this._dependencies.push(new FileDependency(new CFURL(URLString), isQuoted));
 }
-Preprocessor.prototype.method = function( tokens)
+Preprocessor.prototype.method = function( tokens, ivar_names)
 {
     var buffer = new StringBuffer(),
         token,
         selector = "",
         parameters = [],
         types = [null];
-    while((token = tokens.skip_whitespace()) && token != TOKEN_OPEN_BRACE)
+    ivar_names = ivar_names || {};
+    while((token = tokens.skip_whitespace()) && token !== TOKEN_OPEN_BRACE && token !== TOKEN_SEMICOLON)
     {
         if (token == TOKEN_COLON)
         {
@@ -3259,6 +3371,8 @@ Preprocessor.prototype.method = function( tokens)
             }
             types[parameters.length+1] = type || null;
             parameters[parameters.length] = token;
+            if (token in ivar_names)
+                throw new SyntaxError(this.error_message("*** Method ( "+selector+" ) uses a parameter name that is already in use ( "+token+" )"));
         }
         else if (token == TOKEN_OPEN_PARENTHESIS)
         {
@@ -3274,6 +3388,15 @@ Preprocessor.prototype.method = function( tokens)
         }
         else
             selector += token;
+    }
+    if (token === TOKEN_SEMICOLON)
+    {
+        token = tokens.skip_whitespace();
+        if (token !== TOKEN_OPEN_BRACE)
+        {
+            throw new SyntaxError(this.error_message("Invalid semi-colon in method declaration. "+
+            "Semi-colons are allowed only to terminate the method signature, before the open brace."));
+        }
     }
     var index = 0,
         count = parameters.length;
@@ -3402,6 +3525,8 @@ Preprocessor.prototype.preprocess = function(tokens, aStringBuffer, terminator, 
         }
         else if (token == TOKEN_PREPROCESSOR)
             this.directive(tokens, buffer);
+        else if (token == TOKEN_HASH)
+            this.hash(tokens, buffer);
         else if (token == TOKEN_OPEN_BRACKET)
             this.brackets(tokens, buffer);
         else
@@ -3821,7 +3946,7 @@ objj_method = function( aName, anImplementation, types)
     this.types = types;
 }
 objj_method.displayName = "objj_method";
-objj_class = function()
+objj_class = function(displayName)
 {
     this.isa = NULL;
     this.super_class = NULL;
@@ -3833,7 +3958,7 @@ objj_class = function()
     this.method_hash = {};
     this.method_store = function() { };
     this.method_dtable = this.method_store.prototype;
-    this.allocator = function() { };
+    this.allocator = eval("(function " + (displayName || "OBJJ_OBJECT").replace(/\W/g, "_") + "() { })");
     this._UID = -1;
 }
 objj_class.displayName = "objj_class";
@@ -3994,8 +4119,8 @@ class_getMethodImplementation.displayName = "class_getMethodImplementation";
 var REGISTERED_CLASSES = { };
 objj_allocateClassPair = function( superclass, aName)
 {
-    var classObject = new objj_class(),
-        metaClassObject = new objj_class(),
+    var classObject = new objj_class(aName),
+        metaClassObject = new objj_class(aName),
         rootClassObject = classObject;
     if (superclass)
     {
@@ -4034,7 +4159,7 @@ objj_registerClassPair.displayName = "objj_registerClassPair";
 class_createInstance = function( aClass)
 {
     if (!aClass)
-        objj_exception_throw(new objj_exception(OBJJNilClassException, "*** Attempting to create object with Nil class."));
+        throw new Error("*** Attempting to create object with Nil class.");
     var object = new aClass.allocator();
     object.isa = aClass;
     object._UID = objj_generateObjectUID();
@@ -4249,10 +4374,26 @@ objj_backtrace_decorator = function(msgSend)
         {
             CPLog.warn("Exception " + anException + " in " + objj_debug_message_format(aReceiver, aSelector));
             objj_backtrace_print(CPLog.warn);
+            throw anException;
         }
         finally
         {
             objj_backtrace.pop();
+        }
+    }
+}
+objj_supress_exceptions_decorator = function(msgSend)
+{
+    return function(aReceiverOrSuper, aSelector)
+    {
+        var aReceiver = aReceiverOrSuper && (aReceiverOrSuper.receiver || aReceiverOrSuper);
+        try
+        {
+            return msgSend.apply(NULL, arguments);
+        }
+        catch (anException)
+        {
+            CPLog.warn("Exception " + anException + " in " + objj_debug_message_format(aReceiver, aSelector));
         }
     }
 }
