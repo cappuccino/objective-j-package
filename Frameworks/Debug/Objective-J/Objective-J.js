@@ -202,8 +202,8 @@ replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
         };
     }
 }());
-var formatRegex = new RegExp("([^%]+|%[\\+\\-\\ \\#0]*[0-9\\*]*(.[0-9\\*]+)?[hlL]?[cbBdieEfgGosuxXpn%@])", "g");
-var tagRegex = new RegExp("(%)([\\+\\-\\ \\#0]*)([0-9\\*]*)((.[0-9\\*]+)?)([hlL]?)([cbBdieEfgGosuxXpn%@])");
+var formatRegex = new RegExp("([^%]+|%(?:\\d+\\$)?[\\+\\-\\ \\#0]*[0-9\\*]*(.[0-9\\*]+)?[hlL]?[cbBdieEfgGosuxXpn%@])", "g");
+var tagRegex = new RegExp("(%)(?:(\\d+)\\$)?([\\+\\-\\ \\#0]*)([0-9\\*]*)((?:.[0-9\\*]+)?)([hlL]?)([cbBdieEfgGosuxXpn%@])");
 exports.sprintf = function(format)
 {
     var format = arguments[0],
@@ -219,10 +219,10 @@ exports.sprintf = function(format)
             return result;
         }
         index += t.length;
-        if (t.charAt(0) != "%")
-        {
+        if (t.charAt(0) !== "%")
             result += t;
-        }
+        else if (t === "%%")
+            result += "%";
         else
         {
             var subtokens = t.match(tagRegex);
@@ -231,19 +231,24 @@ exports.sprintf = function(format)
                 return result;
             }
             var percentSign = subtokens[1],
-                flags = subtokens[2],
-                widthString = subtokens[3],
-                precisionString = subtokens[4],
+                argIndex = subtokens[2],
+                flags = subtokens[3],
+                widthString = subtokens[4],
+                precisionString = subtokens[5],
                 length = subtokens[6],
                 specifier = subtokens[7];
+            if (argIndex === undefined || argIndex === null || argIndex === "")
+                argIndex = arg++;
+            else
+                argIndex = Number(argIndex);
             var width = null;
             if (widthString == "*")
-                width = arguments[arg++];
+                width = arguments[argIndex];
             else if (widthString != "")
                 width = Number(widthString);
             var precision = null;
             if (precisionString == ".*")
-                precision = arguments[arg++];
+                precision = arguments[argIndex];
             else if (precisionString != "")
                 precision = Number(precisionString.substring(1));
             var leftJustify = (flags.indexOf("-") >= 0);
@@ -251,7 +256,7 @@ exports.sprintf = function(format)
             var subresult = "";
             if (RegExp("[bBdiufeExXo]").test(specifier))
             {
-                var num = Number(arguments[arg++]);
+                var num = Number(arguments[argIndex]);
                 var sign = "";
                 if (num < 0)
                 {
@@ -310,12 +315,11 @@ exports.sprintf = function(format)
                 if (specifier == "%")
                     subresult = "%";
                 else if (specifier == "c")
-                    subresult = String(arguments[arg++]).charAt(0);
+                    subresult = String(arguments[argIndex]).charAt(0);
                 else if (specifier == "s" || specifier == "@")
-                    subresult = String(arguments[arg++]);
+                    subresult = String(arguments[argIndex]);
                 else if (specifier == "p" || specifier == "n")
                 {
-                    arg++;
                     subresult = "";
                 }
                 subresult = justify("", "", subresult, "", width, leftJustify, false);
@@ -923,7 +927,7 @@ function serializePropertyList( aPropertyList, serializers)
         type = "boolean";
     else if (type === "number")
     {
-        if (FLOOR(aPropertyList) === aPropertyList)
+        if (FLOOR(aPropertyList) === aPropertyList && ("" + aPropertyList).indexOf('e') == -1)
             type = "integer";
         else
             type = "real";
@@ -1061,6 +1065,21 @@ var XML_XML = "xml",
     PLIST_NUMBER_REAL = "real",
     PLIST_NUMBER_INTEGER = "integer",
     PLIST_DATA = "data";
+var textContent = function(nodes)
+{
+    var text = "",
+        index = 0,
+        count = nodes.length;
+    for (; index < count; ++index)
+    {
+        var node = nodes[index];
+        if (node.nodeType === 3 || node.nodeType === 4)
+            text += node.nodeValue;
+        else if (node.nodeType !== 8)
+            text += textContent(node.childNodes);
+    }
+    return text;
+}
 var _plist_traverseNextNode = function(anXMLNode, stayWithin, stack)
 {
     var node = anXMLNode;
@@ -1216,7 +1235,7 @@ CFPropertyList.propertyListFromXML = function( aStringOrXMLNode)
             currentContainer = containers[count - 1];
         if ((String(XMLNode.nodeName)) === PLIST_KEY)
         {
-            key = ((String((XMLNode.firstChild).nodeValue)));
+            key = (XMLNode.textContent || (XMLNode.textContent !== "" && textContent([XMLNode])));
             while ((XMLNode = (XMLNode.nextSibling)) && ((XMLNode.nodeType) === 8 || (XMLNode.nodeType) === 3)) ;;
         }
         switch (String((String(XMLNode.nodeName))))
@@ -1227,21 +1246,21 @@ CFPropertyList.propertyListFromXML = function( aStringOrXMLNode)
             case PLIST_DICTIONARY: object = new CFMutableDictionary();
                                         containers.push(object);
                                         break;
-            case PLIST_NUMBER_REAL: object = parseFloat(((String((XMLNode.firstChild).nodeValue))));
+            case PLIST_NUMBER_REAL: object = parseFloat((XMLNode.textContent || (XMLNode.textContent !== "" && textContent([XMLNode]))));
                                         break;
-            case PLIST_NUMBER_INTEGER: object = parseInt(((String((XMLNode.firstChild).nodeValue))), 10);
+            case PLIST_NUMBER_INTEGER: object = parseInt((XMLNode.textContent || (XMLNode.textContent !== "" && textContent([XMLNode]))), 10);
                                         break;
             case PLIST_STRING: if ((XMLNode.getAttribute("type") === "base64"))
-                                            object = (XMLNode.firstChild) ? CFData.decodeBase64ToString(((String((XMLNode.firstChild).nodeValue)))) : "";
+                                            object = (XMLNode.firstChild) ? CFData.decodeBase64ToString((XMLNode.textContent || (XMLNode.textContent !== "" && textContent([XMLNode])))) : "";
                                         else
-                                            object = decodeHTMLComponent((XMLNode.firstChild) ? ((String((XMLNode.firstChild).nodeValue))) : "");
+                                            object = decodeHTMLComponent((XMLNode.firstChild) ? (XMLNode.textContent || (XMLNode.textContent !== "" && textContent([XMLNode]))) : "");
                                         break;
             case PLIST_BOOLEAN_TRUE: object = YES;
                                         break;
             case PLIST_BOOLEAN_FALSE: object = NO;
                                         break;
             case PLIST_DATA: object = new CFMutableData();
-                                        object.bytes = (XMLNode.firstChild) ? CFData.decodeBase64ToArray(((String((XMLNode.firstChild).nodeValue))), YES) : [];
+                                        object.bytes = (XMLNode.firstChild) ? CFData.decodeBase64ToArray((XMLNode.textContent || (XMLNode.textContent !== "" && textContent([XMLNode]))), YES) : [];
                                         break;
             default: throw new Error("*** " + (String(XMLNode.nodeName)) + " tag not recognized in Plist.");
         }
@@ -2326,11 +2345,12 @@ CFBundle.prototype.isLoading = function()
 {
     return this._loadStatus & CFBundleLoading;
 }
+CFBundle.prototype.isLoading.displayName = "CFBundle.prototype.isLoading";
 CFBundle.prototype.isLoaded = function()
 {
     return this._loadStatus & CFBundleLoaded;
 }
-CFBundle.prototype.isLoading.displayName = "CFBundle.prototype.isLoading";
+CFBundle.prototype.isLoaded.displayName = "CFBundle.prototype.isLoaded";
 CFBundle.prototype.load = function( shouldExecute)
 {
     if (this._loadStatus !== CFBundleUnloaded)
@@ -2543,7 +2563,7 @@ function CFBundleNotifySpriteSupportListeners()
 }
 function CFBundleTestSpriteTypes( spriteTypes)
 {
-    if (spriteTypes.length < 2)
+    if (!("Image" in global) || spriteTypes.length < 2)
     {
         CFBundleSupportedSpriteType = CFBundleNoSpriteType;
         CFBundleNotifySpriteSupportListeners();
@@ -3223,7 +3243,8 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                 ivar_count = 0,
                 declaration = [],
                 attributes,
-                accessors = {};
+                accessors = {},
+                types = [];
             while((token = tokens.skip_whitespace()) && token != TOKEN_CLOSE_BRACE)
             {
                 if (token === TOKEN_PREPROCESSOR)
@@ -3233,6 +3254,8 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                         attributes = this.accessors(tokens);
                     else if (token !== TOKEN_OUTLET)
                         throw new SyntaxError(this.error_message("*** Unexpected '@' token in ivar declaration ('@"+token+"')."));
+                    else
+                        types.push("@" + token);
                 }
                 else if (token == TOKEN_SEMICOLON)
                 {
@@ -3241,9 +3264,13 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                     else
                         buffer.atoms[buffer.atoms.length] = ", ";
                     var name = declaration[declaration.length - 1];
-                    buffer.atoms[buffer.atoms.length] = "new objj_ivar(\"" + name + "\")";
+                    if (this._flags & Preprocessor.Flags.IncludeTypeSignatures)
+                        buffer.atoms[buffer.atoms.length] = "new objj_ivar(\"" + name + "\", \"" + types.slice(0, types.length - 1). join(" ") + "\")";
+                    else
+                        buffer.atoms[buffer.atoms.length] = "new objj_ivar(\"" + name + "\")";
                     ivar_names[name] = 1;
                     declaration = [];
+                    types = [];
                     if (attributes)
                     {
                         accessors[name] = attributes;
@@ -3251,7 +3278,10 @@ Preprocessor.prototype.implementation = function(tokens, aStringBuffer)
                     }
                 }
                 else
+                {
                     declaration.push(token);
+                    types.push(token);
+                }
             }
             if (declaration.length)
                 throw new SyntaxError(this.error_message("*** Expected ';' in ivar declaration, found '}'."));
@@ -3382,7 +3412,7 @@ Preprocessor.prototype.method = function( tokens, ivar_names)
             types[parameters.length + 1] = type || null;
             parameters[parameters.length] = token;
             if (token in ivar_names)
-                throw new SyntaxError(this.error_message("*** Method ( "+selector+" ) uses a parameter name that is already in use ( "+token+" )"));
+                CPLog.warn(this.error_message("*** Warning: Method ( "+selector+" ) uses a parameter name that is already in use ( "+token+" )"));
         }
         else if (token == TOKEN_OPEN_PARENTHESIS)
         {
@@ -3959,13 +3989,15 @@ objj_method.displayName = "objj_method";
 objj_class = function(displayName)
 {
     this.isa = NULL;
+    this.version = 0;
     this.super_class = NULL;
     this.sub_classes = [];
     this.name = NULL;
     this.info = 0;
-    this.ivars = [];
+    this.ivar_list = [];
+    this.ivar_store = function() { };
+    this.ivar_dtable = this.ivar_store.prototype;
     this.method_list = [];
-    this.method_hash = {};
     this.method_store = function() { };
     this.method_dtable = this.method_store.prototype;
     eval("this.allocator = function " + (displayName || "OBJJ_OBJECT").replace(/\W/g, "_") + "() { }");
@@ -4010,7 +4042,9 @@ class_addIvar = function( aClass, aName, aType)
     var thePrototype = aClass.allocator.prototype;
     if (typeof thePrototype[aName] != "undefined")
         return NO;
-    aClass.ivars.push(new objj_ivar(aName, aType));
+    var ivar = new objj_ivar(aName, aType);
+    aClass.ivar_list.push(ivar);
+    aClass.ivar_dtable[aName] = ivar;
     thePrototype[aName] = NULL;
     return YES;
 }
@@ -4026,7 +4060,8 @@ class_addIvars = function( aClass, ivars)
             name = ivar.name;
         if (typeof thePrototype[name] === "undefined")
         {
-            aClass.ivars.push(ivar);
+            aClass.ivar_list.push(ivar);
+            aClass.ivar_dtable[name] = ivar;
             thePrototype[name] = NULL;
         }
     }
@@ -4034,13 +4069,11 @@ class_addIvars = function( aClass, ivars)
 class_addIvars.displayName = "class_addIvars";
 class_copyIvarList = function( aClass)
 {
-    return aClass.ivars.slice(0);
+    return aClass.ivar_list.slice(0);
 }
 class_copyIvarList.displayName = "class_copyIvarList";
 class_addMethod = function( aClass, aName, anImplementation, types)
 {
-    if (aClass.method_hash[aName])
-        return NO;
     var method = new objj_method(aName, anImplementation, types);
     aClass.method_list.push(method);
     aClass.method_dtable[aName] = method;
@@ -4059,8 +4092,6 @@ class_addMethods = function( aClass, methods)
     for (; index < count; ++index)
     {
         var method = methods[index];
-        if (aClass.method_hash[method.name])
-            continue;
         method_list.push(method);
         method_dtable[method.name] = method;
         method.method_imp.displayName = (((aClass.info & (CLS_META))) ? '+' : '-') + " [" + class_getName(aClass) + ' ' + method_getName(method) + ']';
@@ -4077,6 +4108,14 @@ class_getInstanceMethod = function( aClass, aSelector)
     return method ? method : NULL;
 }
 class_getInstanceMethod.displayName = "class_getInstanceMethod";
+class_getInstanceVariable = function( aClass, aName)
+{
+    if (!aClass || !aName)
+        return NULL;
+    var variable = aClass.ivar_dtable[aName];
+    return variable;
+}
+class_getInstanceVariable.displayName = "class_getInstanceVariable";
 class_getClassMethod = function( aClass, aSelector)
 {
     if (!aClass || !aSelector)
@@ -4095,6 +4134,16 @@ class_copyMethodList = function( aClass)
     return aClass.method_list.slice(0);
 }
 class_copyMethodList.displayName = "class_copyMethodList";
+class_getVersion = function( aClass)
+{
+    return aClass.version;
+}
+class_getVersion.displayName = "class_getVersion";
+class_setVersion = function( aClass, aVersion)
+{
+    aClass.version = parseInt(aVersion, 10);
+}
+class_setVersion.displayName = "class_setVersion";
 class_replaceMethod = function( aClass, aSelector, aMethodImplementation)
 {
     if (!aClass || !aSelector)
@@ -4121,13 +4170,50 @@ var _class_initialize = function( aClass)
         meta.info = (meta.info | (CLS_INITIALIZED)) & ~(CLS_INITIALIZING);
     }
 }
-var _objj_forward = new objj_method("forward", function(self, _cmd)
+var _objj_forward = function(self, _cmd)
 {
-    return objj_msgSend(self, "forward::", _cmd, arguments);
-});
+    var isa = self.isa,
+        implementation = isa.method_dtable[SEL_forwardingTargetForSelector_];
+    if (implementation)
+    {
+        var target = implementation.method_imp.call(this, self, SEL_forwardingTargetForSelector_, _cmd);
+        if (target && target !== self)
+        {
+            arguments[0] = target;
+            return objj_msgSend.apply(this, arguments);
+        }
+    }
+    implementation = isa.method_dtable[SEL_methodSignatureForSelector_];
+    if (implementation)
+    {
+        var forwardInvocationImplementation = isa.method_dtable[SEL_forwardInvocation_];
+        if (forwardInvocationImplementation)
+        {
+            var signature = implementation.method_imp.call(this, self, SEL_methodSignatureForSelector_, _cmd);
+            if (signature)
+            {
+                var invocationClass = objj_lookUpClass("CPInvocation");
+                if (invocationClass)
+                {
+                    var invocation = objj_msgSend(invocationClass, SEL_invocationWithMethodSignature_, signature),
+                        index = 0,
+                        count = arguments.length;
+                    for (; index < count; ++index)
+                        objj_msgSend(invocation, SEL_setArgument_atIndex_, arguments[index], index);
+                    forwardInvocationImplementation.method_imp.call(this, self, SEL_forwardInvocation_, invocation);
+                    return objj_msgSend(invocation, SEL_returnValue);
+                }
+            }
+        }
+    }
+    implementation = isa.method_dtable[SEL_doesNotRecognizeSelector_];
+    if (implementation)
+        return implementation.method_imp.call(this, self, SEL_doesNotRecognizeSelector_, _cmd);
+    throw class_getName(isa) + " does not implement doesNotRecognizeSelector:. Did you forget a superclass for " + class_getName(isa) + "?";
+};
 class_getMethodImplementation = function( aClass, aSelector)
 {
-    if (!((((aClass.info & (CLS_META))) ? aClass : aClass.isa).info & (CLS_INITIALIZED))) _class_initialize(aClass); var method = aClass.method_dtable[aSelector]; if (!method) method = _objj_forward; var implementation = method.method_imp;;
+    if (!((((aClass.info & (CLS_META))) ? aClass : aClass.isa).info & (CLS_INITIALIZED))) _class_initialize(aClass); var method = aClass.method_dtable[aSelector]; var implementation = method ? method.method_imp : _objj_forward;;
     return implementation;
 }
 class_getMethodImplementation.displayName = "class_getMethodImplementation";
@@ -4143,10 +4229,9 @@ objj_allocateClassPair = function( superclass, aName)
         while (rootClassObject.superclass)
             rootClassObject = rootClassObject.superclass;
         classObject.allocator.prototype = new superclass.allocator;
-        classObject.method_store.prototype = new superclass.method_store;
-        classObject.method_dtable = classObject.method_store.prototype;
-        metaClassObject.method_store.prototype = new superclass.isa.method_store;
-        metaClassObject.method_dtable = metaClassObject.method_store.prototype;
+        classObject.ivar_dtable = classObject.ivar_store.prototype = new superclass.ivar_store;
+        classObject.method_dtable = classObject.method_store.prototype = new superclass.method_store;
+        metaClassObject.method_dtable = metaClassObject.method_store.prototype = new superclass.isa.method_store;
         classObject.super_class = superclass;
         metaClassObject.super_class = superclass.isa;
     }
@@ -4197,7 +4282,7 @@ class_createInstance = function( aClass)
             actualClass = theClass;
         while (theClass)
         {
-            var ivars = theClass.ivars,
+            var ivars = theClass.ivar_list,
                 count = ivars.length;
             while (count--)
                 object[ivars[count].name] = NULL;
@@ -4252,7 +4337,7 @@ objj_msgSend = function( aReceiver, aSelector)
     if (aReceiver == nil)
         return nil;
     var isa = aReceiver.isa;
-    if (!((((isa.info & (CLS_META))) ? isa : isa.isa).info & (CLS_INITIALIZED))) _class_initialize(isa); var method = isa.method_dtable[aSelector]; if (!method) method = _objj_forward; var implementation = method.method_imp;;
+    if (!((((isa.info & (CLS_META))) ? isa : isa.isa).info & (CLS_INITIALIZED))) _class_initialize(isa); var method = isa.method_dtable[aSelector]; var implementation = method ? method.method_imp : _objj_forward;;
     switch(arguments.length)
     {
         case 2: return implementation(aReceiver, aSelector);
@@ -4266,7 +4351,7 @@ objj_msgSendSuper = function( aSuper, aSelector)
 {
     var super_class = aSuper.super_class;
     arguments[0] = aSuper.receiver;
-    if (!((((super_class.info & (CLS_META))) ? super_class : super_class.isa).info & (CLS_INITIALIZED))) _class_initialize(super_class); var method = super_class.method_dtable[aSelector]; if (!method) method = _objj_forward; var implementation = method.method_imp;;
+    if (!((((super_class.info & (CLS_META))) ? super_class : super_class.isa).info & (CLS_INITIALIZED))) _class_initialize(super_class); var method = super_class.method_dtable[aSelector]; var implementation = method ? method.method_imp : _objj_forward;;
     return implementation.apply(aSuper.receiver, arguments);
 }
 objj_msgSendSuper.displayName = "objj_msgSendSuper";
@@ -4315,6 +4400,25 @@ sel_registerName = function( aName)
     return aName;
 }
 sel_registerName.displayName = "sel_registerName";
+objj_class.prototype.toString = objj_object.prototype.toString = function()
+{
+    var isa = this.isa;
+    if (class_getInstanceMethod(isa, SEL_description))
+        return objj_msgSend(this, SEL_description);
+    if (class_isMetaClass(isa))
+        return this.name;
+    return "[" + isa.name + " Object](-description not implemented)";
+}
+var SEL_description = sel_getUid("description"),
+    SEL_forwardingTargetForSelector_ = sel_getUid("forwardingTargetForSelector:"),
+    SEL_methodSignatureForSelector_ = sel_getUid("methodSignatureForSelector:"),
+    SEL_forwardInvocation_ = sel_getUid("forwardInvocation:"),
+    SEL_doesNotRecognizeSelector_ = sel_getUid("doesNotRecognizeSelector:"),
+    SEL_invocationWithMethodSignature_ = sel_getUid("invocationWithMethodSignature:"),
+    SEL_setTarget_ = sel_getUid("setTarget:"),
+    SEL_setSelector_ = sel_getUid("setSelector:"),
+    SEL_setArgument_atIndex_ = sel_getUid("setArgument:atIndex:"),
+    SEL_returnValue = sel_getUid("returnValue");
 objj_eval = function( aString)
 {
     var url = exports.pageURL;
@@ -4387,8 +4491,12 @@ objj_backtrace_decorator = function(msgSend)
         }
         catch (anException)
         {
-            CPLog.warn("Exception " + anException + " in " + objj_debug_message_format(aReceiver, aSelector));
-            objj_backtrace_print(CPLog.warn);
+            if (objj_backtrace.length)
+            {
+                CPLog.warn("Exception " + anException + " in " + objj_debug_message_format(aReceiver, aSelector));
+                objj_backtrace_print(CPLog.warn);
+                objj_backtrace = [];
+            }
             throw anException;
         }
         finally
